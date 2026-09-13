@@ -1,6 +1,8 @@
-
 import React, { useState } from 'react';
 import { ShoppingCart, Search, X, Plus, Minus, ArrowLeft, CheckCircle } from 'lucide-react';
+import Navbar from '../Components/Navbar';
+import About from './About';
+import Contact from './Contact';
 
 const PRODUCTS = [
   { id: 1, name: "Men's React Jacket", price: 95, category: "Men", image: "🧥", description: "A stylish and lightweight jacket designed for everyday comfort and modern streetwear." },
@@ -21,6 +23,7 @@ export default function Shop() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [checkoutStep, setCheckoutStep] = useState("cart");
   const [formData, setFormData] = useState({ name: '', address: '', city: '' });
+  const [currentPage, setCurrentPage] = useState("shop"); // 'shop', 'about', 'contact'
 
   const addToCart = (product) => {
     setCart((prevCart) => {
@@ -71,95 +74,96 @@ export default function Shop() {
 
   return (
     <div className="app-container">
-      <header className="navbar">
-        <div className="nav-brand" onClick={() => setSelectedProduct(null)}>Doorstep</div>
-        <div className="nav-search">
-          <Search size={18} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="nav-actions">
-          <button className="cart-btn" onClick={() => { setIsCartOpen(true); setCheckoutStep("cart"); }}>
-            <ShoppingCart size={22} />
-            {totalCartItems > 0 && <span className="badge">{totalCartItems}</span>}
-          </button>
-        </div>
-      </header>
+      {/* Reusable Navbar Component */}
+      <Navbar 
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        setSelectedProduct={setSelectedProduct}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        totalCartItems={totalCartItems}
+        setIsCartOpen={setIsCartOpen}
+        setCheckoutStep={setCheckoutStep}
+      />
 
       <div className="main-layout">
-        {!selectedProduct ? (
+        {currentPage === "about" && <About />}
+
+        {currentPage === "contact" && <Contact />}
+
+        {currentPage === "shop" && (
           <>
-            <aside className="sidebar">
-              <h3>Category</h3>
-              <ul>
-                {["All", "Men", "Accessories", "Electronics"].map((cat) => (
-                  <li
-                    key={cat}
-                    className={selectedCategory === cat ? "active" : ""}
-                    onClick={() => setSelectedCategory(cat)}
-                  >
-                    {cat}
-                  </li>
-                ))}
-              </ul>
-            </aside>
+            {!selectedProduct ? (
+              <>
+                <aside className="sidebar">
+                  <h3>Category</h3>
+                  <ul>
+                    {["All", "Men", "Accessories", "Electronics"].map((cat) => (
+                      <li
+                        key={cat}
+                        className={selectedCategory === cat ? "active" : ""}
+                        onClick={() => setSelectedCategory(cat)}
+                      >
+                        {cat}
+                      </li>
+                    ))}
+                  </ul>
+                </aside>
 
-            <main className="product-grid-section">
-              <div className="hero-banner">
-                <h2>Summer Collection 2026</h2>
-                <p>Discover clean, modern frontend layouts built with React</p>
-              </div>
+                <main className="product-grid-section">
+                  <div className="hero-banner">
+                    <h2>Summer Collection 2026</h2>
+                    <p>Discover clean, modern frontend layouts built with React</p>
+                  </div>
 
-              <div className="catalog-controls">
-                <span>Showing {filteredProducts.length} results</span>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select">
-                  <option value="default">Sort by: Featured</option>
-                  <option value="low-high">Price: Low to High</option>
-                  <option value="high-low">Price: High to Low</option>
-                  <option value="name">Name: A to Z</option>
-                </select>
-              </div>
+                  <div className="catalog-controls">
+                    <span>Showing {filteredProducts.length} results</span>
+                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sort-select">
+                      <option value="default">Sort by: Featured</option>
+                      <option value="low-high">Price: Low to High</option>
+                      <option value="high-low">Price: High to Low</option>
+                      <option value="name">Name: A to Z</option>
+                    </select>
+                  </div>
 
-              <div className="product-grid">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => (
-                    <div key={product.id} className="product-card">
-                      <div className="product-image" onClick={() => setSelectedProduct(product)}>
-                        {product.image}
-                      </div>
-                      <h4 onClick={() => setSelectedProduct(product)}>{product.name}</h4>
-                      <p className="price">${product.price}</p>
-                      <button onClick={() => addToCart(product)}>Add to Cart</button>
-                    </div>
-                  ))
-                ) : (
-                  <p>No products found.</p>
-                )}
-              </div>
-            </main>
-          </>
-        ) : (
-          <div className="product-detail-view">
-            <button className="back-btn" onClick={() => setSelectedProduct(null)}>
-              <ArrowLeft size={16} /> Back to Products
-            </button>
-            <div className="product-detail-container">
-              <div className="detail-image-box">{selectedProduct.image}</div>
-              <div className="detail-info">
-                <span className="category-tag">{selectedProduct.category}</span>
-                <h2>{selectedProduct.name}</h2>
-                <p className="detail-price">${selectedProduct.price}</p>
-                <p className="description">{selectedProduct.description}</p>
-                <button className="primary-btn" onClick={() => addToCart(selectedProduct)}>
-                  Add to Cart
+                  <div className="product-grid">
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => (
+                        <div key={product.id} className="product-card">
+                          <div className="product-image" onClick={() => setSelectedProduct(product)}>
+                            {product.image}
+                          </div>
+                          <h4 onClick={() => setSelectedProduct(product)}>{product.name}</h4>
+                          <p className="price">${product.price}</p>
+                          <button onClick={() => addToCart(product)}>Add to Cart</button>
+                        </div>
+                      ))
+                    ) : (
+                      <p>No products found.</p>
+                    )}
+                  </div>
+                </main>
+              </>
+            ) : (
+              <div className="product-detail-view">
+                <button className="back-btn" onClick={() => setSelectedProduct(null)}>
+                  <ArrowLeft size={16} /> Back to Products
                 </button>
+                <div className="product-detail-container">
+                  <div className="detail-image-box">{selectedProduct.image}</div>
+                  <div className="detail-info">
+                    <span className="category-tag">{selectedProduct.category}</span>
+                    <h2>{selectedProduct.name}</h2>
+                    <p className="detail-price">${selectedProduct.price}</p>
+                    <p className="description">{selectedProduct.description}</p>
+                    <button className="primary-btn" onClick={() => addToCart(selectedProduct)}>
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
 

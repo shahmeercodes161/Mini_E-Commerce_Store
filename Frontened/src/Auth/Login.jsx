@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Inputfield from '../Components/Inputfield';
 import Sociallogin from '../Components/Sociallogin';
 import { Mail, Lock, LogIn } from 'lucide-react';
+import './Login.css';
 
 export default function Login({ onLoginSuccess, onSwitchToSignup }) {
   const [email, setEmail] = useState('');
