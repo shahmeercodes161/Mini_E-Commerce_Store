@@ -12,8 +12,10 @@ export default function Navbar({ currentPage, setCurrentPage, setSelectedProduct
         <span onClick={() => { setCurrentPage("shop"); setSelectedProduct(null); }} style={{ color: currentPage === "shop" ? '#2563eb' : '#475569' }}>Shop</span>
         <span onClick={() => setCurrentPage("about")} style={{ color: currentPage === "about" ? '#2563eb' : '#475569' }}>About</span>
         <span onClick={() => setCurrentPage("contact")} style={{ color: currentPage === "contact" ? '#2563eb' : '#475569' }}>Contact</span>
-      </nav>
-
+        
+        {/* KEY PARAMETER FIXED: INTEGRATED LIVE ADMIN TOGGLE TAB */}
+        <span onClick={() => { setCurrentPage("admin"); setSelectedProduct(null); }} style={{ color: currentPage === "admin" ? '#2563eb' : '#475569', fontWeight: 'bold' }}>🔑 Admin</span>
+      </nav> 
       <div className="nav-search">
         <Search size={18} className="search-icon" />
         <input

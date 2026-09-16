@@ -21,7 +21,7 @@ export default function Contact() {
             required 
             value={contactData.name}
             onChange={(e) => setContactData({...contactData, name: e.target.value})}
-            placeholder="Muhammad Shahmir" 
+            placeholder="Type Your Full Name Here" 
             style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
           />
         </div>
