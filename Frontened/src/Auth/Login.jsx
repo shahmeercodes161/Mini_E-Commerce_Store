@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Inputfield from '../Components/Inputfield';
 import Sociallogin from '../Components/Sociallogin';
@@ -8,21 +7,32 @@ import './Login.css';
 export default function Login({ onLoginSuccess, onSwitchToSignup }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState(''); // Stores server error messages
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage(''); // Reset errors before trying to connect
     
-    const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
-    const foundUser = existingUsers.find(
-      (user) => user.email === email && user.password === password
-    );
+    try {
+      // 🟢 Connecting directly to your backend on port 3000
+      const response = await fetch('http://localhost:3000/api/products', {
+        method: 'GET', // Testing connection by fetching products
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (foundUser || existingUsers.length === 0) {
-      if (onLoginSuccess) {
-        onLoginSuccess();
+      if (response.ok) {
+        console.log('Backend connection successful!');
+        if (onLoginSuccess) {
+          onLoginSuccess(); // Log the user in if the backend responds smoothly
+        }
+      } else {
+        setErrorMessage('Backend found, but returned an error response.');
       }
-    } else {
-      alert('Invalid email or password. Please check your details or sign up.');
+    } catch (error) {
+      console.error('Connection failed:', error);
+      setErrorMessage('Cannot connect to backend. Is your server running on port 3000?');
     }
   };
 
@@ -33,6 +43,13 @@ export default function Login({ onLoginSuccess, onSwitchToSignup }) {
           <h2>Welcome Back</h2>
           <p>Please enter your details to sign in</p>
         </div>
+
+        {/* Displays the server connection status if it fails */}
+        {errorMessage && (
+          <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '10px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px', textAlign: 'center', border: '1px solid #fee2e2' }}>
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="login-form">
           <Inputfield
