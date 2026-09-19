@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm --prefix Frontened run build",
+    "install": "npm --prefix Frontened install",
+    "build": "npm --prefix Frontened install && npm --prefix Frontened run build",
     "start": "npm --prefix Frontened run preview"
   }
 }

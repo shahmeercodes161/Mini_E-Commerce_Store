@@ -1,7 +1,8 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm --prefix Frontened install",
   "buildCommand": "npm --prefix Frontened run build",
   "outputDirectory": "Frontened/dist",
-  "framework": "vite",
   "rewrites": [
     {
       "source": "/(.*)",
