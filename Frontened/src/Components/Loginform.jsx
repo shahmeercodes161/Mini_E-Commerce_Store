@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import InputField from './Inputfield';
 import SocialLogin from './Sociallogin';
 import { Mail, Lock, LogIn } from 'lucide-react';
 
-export default function LoginForm() {
+export default function LoginForm({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [notice, setNotice] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(`Logging in with: ${email}`);
+    setNotice(`Signing in as ${email}...`);
+    if (onLogin) {
+      onLogin({ email, password });
+    }
   };
 
   return (
@@ -18,6 +22,12 @@ export default function LoginForm() {
         <h2>Welcome Back</h2>
         <p>Please enter your details to sign in</p>
       </div>
+
+      {notice && (
+        <div style={{ color: '#2563eb', background: '#eff6ff', padding: '10px', borderRadius: '8px', marginBottom: '14px', fontSize: '13px', textAlign: 'center' }}>
+          {notice}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="login-form">
         <InputField

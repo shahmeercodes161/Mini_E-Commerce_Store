@@ -71,3 +71,17 @@ export const updateProduct = async (req, res) => {
     res.status(400).json({ message: 'Failed to update product', error: error.message });
   }
 };
+
+// 5. Admin View: Delete a product
+export const deleteProduct = async (req, res) => {
+  try {
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.status(200).json({ message: 'Product deleted successfully', id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete product', error: error.message });
+  }
+};

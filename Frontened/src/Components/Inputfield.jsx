@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function InputField({ label, type, value, onChange, placeholder, icon }) {
   return (
     <div className="form-group">

@@ -42,15 +42,16 @@ export const checkout = async (req, res) => {
       await dbProduct.save();
     }
 
-    // Calculate totals (simulate tax/shipping as 0 for this base app, or add fees here)
-    const total = subtotal; 
+    // Calculate totals (8% tax rate to match the frontend calculation)
+    const tax = subtotal * 0.08;
+    const total = parseFloat((subtotal + tax).toFixed(2)); 
 
     // Create and save unique order record
     const newOrder = new Order({
       customerName,
       customerEmail,
       items: finalOrderItems,
-      subtotal,
+      subtotal: parseFloat(subtotal.toFixed(2)),
       total,
       status: 'Completed' // Simulated immediate payment authorization success
     });
