@@ -1,10 +1,21 @@
 {
   "name": "mini-ecommerce-store",
-  "version": "1.0.0",
   "private": true,
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "install": "npm --prefix Frontened install",
-    "build": "npm --prefix Frontened install && npm --prefix Frontened run build",
-    "start": "npm --prefix Frontened run preview"
+    "dev": "npm --prefix Frontened run dev",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "lucide-react": "^1.45.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0"
   }
 }
