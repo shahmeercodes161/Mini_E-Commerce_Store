@@ -41,13 +41,13 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("default");
   const [toastMessage, setToastMessage] = useState("");
-  
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [checkoutStep, setCheckoutStep] = useState("cart");
-  const [formData, setFormData] = useState({ 
-    name: currentUser?.name || '', 
-    email: currentUser?.email || '' 
-  }); 
+  const [formData, setFormData] = useState({
+    name: currentUser?.name || '',
+    email: currentUser?.email || ''
+  });
   const [currentPage, setCurrentPage] = useState(initialPage);
 
   const showToast = (msg) => {
@@ -59,7 +59,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
   const getProductDescription = (name, category) => {
     if (!name) return "";
     const itemName = name.toLowerCase();
-    
+
     if (itemName.includes("headphones") || itemName.includes("earbuds")) {
       return "Experience premium sound with immersive audio depth and active isolation filters. These headphones feature cloud-comfort padding and high-fidelity sonic drivers engineered for pristine clarity during all-day listening sessions.";
     }
@@ -90,7 +90,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
     if (itemName.includes("lamp") || itemName.includes("light")) {
       return "Cast flicker-free, ambient luminosity across your desk layout using high-efficiency color tuning controls. Calibrated specifically to limit visual eye strain and support evening focus hours comfortably.";
     }
-    
+
     return `Discover the brand new ${name}. A high-performance item meticulously refined within our signature ${category} catalog division, balancing structural engineering with daily comfort.`;
   };
 
@@ -114,9 +114,9 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
     if (product.imageUrl) {
       return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img 
-            src={product.imageUrl} 
-            alt={product.name} 
+          <img
+            src={product.imageUrl}
+            alt={product.name}
             className={isDetail ? "detail-product-img" : "product-card-img"}
             onError={(e) => {
               e.target.style.display = 'none';
@@ -274,7 +274,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
 
   return (
     <div className="app-container">
-      <Navbar 
+      <Navbar
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         setSelectedProduct={setSelectedProduct}
@@ -290,13 +290,13 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
       <div className="main-layout">
         {currentPage === "about" && <About />}
         {currentPage === "contact" && <Contact />}
-        
+
         {currentPage === "admin" && (
           currentUser?.role === 'admin' ? (
-            <Admin 
+            <Admin
               products={products}
               setProducts={setProducts}
-              onSwitchToShop={() => setCurrentPage("shop")} 
+              onSwitchToShop={() => setCurrentPage("shop")}
             />
           ) : (
             <div style={{ padding: '60px 20px', textAlign: 'center', width: '100%', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
@@ -318,8 +318,8 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                   <h3>Browse Categories</h3>
                   <ul>
                     {categoriesList.map((cat) => {
-                      const count = cat === "All" 
-                        ? products.length 
+                      const count = cat === "All"
+                        ? products.length
                         : products.filter(p => p.category === cat).length;
                       return (
                         <li
@@ -362,7 +362,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontWeight: '600', color: '#0f172a' }}>Showing {filteredProducts.length} items</span>
                       {searchQuery && (
-                        <button 
+                        <button
                           onClick={() => setSearchQuery("")}
                           style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
@@ -388,9 +388,9 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                       filteredProducts.map((product) => (
                         <div key={product._id} className="product-card">
                           <span className="card-top-tag">{product.category}</span>
-                          
-                          <div 
-                            className="product-image" 
+
+                          <div
+                            className="product-image"
                             onClick={() => setSelectedProduct(product)}
                             title="Click to view details"
                           >
@@ -398,24 +398,24 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                           </div>
 
                           <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                            <h4 
+                            <h4
                               className="product-title"
                               onClick={() => setSelectedProduct(product)}
                             >
                               {product.name}
                             </h4>
-                            
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 'auto', paddingTop: '6px' }}>
                               <p className="price">${product.price ? product.price.toFixed(2) : '0.00'}</p>
-                              
+
                               <span className={`stock-tag ${product.stockQuantity === 0 ? 'stock-out' : product.stockQuantity < 10 ? 'stock-low' : 'stock-in'}`}>
                                 {product.stockQuantity === 0 ? 'Sold Out' : product.stockQuantity < 10 ? `Low: ${product.stockQuantity}` : `In Stock: ${product.stockQuantity}`}
                               </span>
                             </div>
                           </div>
 
-                          <button 
-                            onClick={() => addToCart(product)} 
+                          <button
+                            onClick={() => addToCart(product)}
                             disabled={product.stockQuantity === 0}
                             className={`add-cart-btn ${product.stockQuantity === 0 ? 'btn-disabled' : 'btn-active'}`}
                           >
@@ -437,7 +437,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                   </div>
                 </main>
               </>
-              ) : (
+            ) : (
               <div className="product-detail-view">
                 <button className="back-btn" onClick={() => setSelectedProduct(null)}>
                   <ArrowLeft size={18} /> Back to Products Catalog
@@ -450,19 +450,19 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                     <span className="category-tag">{selectedProduct.category}</span>
                     <h2 style={{ fontSize: '2rem', fontWeight: '800', color: '#0f172a' }}>{selectedProduct.name}</h2>
                     <p className="detail-price">${selectedProduct.price ? selectedProduct.price.toFixed(2) : '0.00'}</p>
-                    
+
                     <p className="description">
                       {getProductDescription(selectedProduct.name, selectedProduct.category)}
                     </p>
-                    
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0 16px 0' }}>
                       <span className={`stock-tag ${selectedProduct.stockQuantity === 0 ? 'stock-out' : 'stock-in'}`} style={{ fontSize: '14px' }}>
                         ● Available Inventory: {selectedProduct.stockQuantity} units
                       </span>
                     </div>
 
-                    <button 
-                      className="primary-btn" 
+                    <button
+                      className="primary-btn"
                       onClick={() => addToCart(selectedProduct)}
                       disabled={selectedProduct.stockQuantity === 0}
                       style={{ opacity: selectedProduct.stockQuantity === 0 ? 0.5 : 1, cursor: selectedProduct.stockQuantity === 0 ? 'not-allowed' : 'pointer' }}
@@ -566,7 +566,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g. Jane Doe"
                     style={{ padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
                   />
@@ -577,12 +577,12 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="jane@example.com"
                     style={{ padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
                   />
                 </div>
-                
+
                 <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '8px', margin: '8px 0', border: '1px solid #e2e8f0', fontSize: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: '4px' }}>
                     <span>Subtotal:</span>
@@ -599,16 +599,16 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
-                  <button 
-                    type="button" 
-                    className="secondary-btn" 
+                  <button
+                    type="button"
+                    className="secondary-btn"
                     onClick={() => setCheckoutStep("cart")}
                     style={{ flex: 1, padding: '11px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: '600' }}
                   >
                     Back to Bag
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="checkout-btn"
                     style={{ flex: 2 }}
                   >
@@ -625,8 +625,8 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                 <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '300px' }}>
                   Thank you for shopping with Doorstep! A confirmation receipt has been sent to your email.
                 </p>
-                <button 
-                  className="checkout-btn" 
+                <button
+                  className="checkout-btn"
                   onClick={() => { setIsCartOpen(false); setCheckoutStep("cart"); }}
                   style={{ width: 'auto', padding: '10px 24px', marginTop: '10px' }}
                 >

@@ -1,0 +1,9 @@
+{
+  "name": "mini-ecommerce-store",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix Frontened run build",
+    "start": "npm --prefix Frontened run preview"
+  }
+}

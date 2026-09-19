@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm --prefix Frontened run build",
+  "outputDirectory": "Frontened/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import {
   Eye, CheckCircle2, Layers, Archive, DollarSign, Upload, Image as ImageIcon, 
   X, AlertCircle 
 } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   const [orders, setOrders] = useState([]);
@@ -27,8 +28,9 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
 
   // Fetch orders
   const fetchOrders = useCallback(async () => {
+    if (!API_BASE_URL) return;
     try {
-      const response = await fetch('http://localhost:3000/api/orders/history');
+      const response = await fetch(`${API_BASE_URL}/api/orders/history`);
       if (response.ok) {
         const data = await response.json();
         setOrders(data);
@@ -41,18 +43,20 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   // Sync products from backend
   const syncBackend = useCallback(async () => {
     const localCustom = JSON.parse(localStorage.getItem('custom_products')) || [];
-    try {
-      const response = await fetch('http://localhost:3000/api/products');
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0 && setProducts) {
-          const backendIds = new Set(data.map(p => p._id));
-          const filteredLocal = localCustom.filter(p => !backendIds.has(p._id));
-          setProducts([...filteredLocal, ...data]);
+    if (API_BASE_URL) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/products`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0 && setProducts) {
+            const backendIds = new Set(data.map(p => p._id));
+            const filteredLocal = localCustom.filter(p => !backendIds.has(p._id));
+            setProducts([...filteredLocal, ...data]);
+          }
         }
+      } catch {
+        // Backend not reached, keep current
       }
-    } catch {
-      // Backend not reached, keep current
     }
     fetchOrders();
     showMsg('success', 'Catalog synchronized successfully.');
@@ -61,8 +65,9 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   useEffect(() => {
     let ignore = false;
     async function loadOrders() {
+      if (!API_BASE_URL) return;
       try {
-        const response = await fetch('http://localhost:3000/api/orders/history');
+        const response = await fetch(`${API_BASE_URL}/api/orders/history`);
         if (response.ok) {
           const data = await response.json();
           if (!ignore) {
@@ -130,28 +135,32 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
 
     // 1. Upload file via Multer if selected
     if (imageFile) {
-      setIsUploading(true);
-      try {
-        const uploadBody = new FormData();
-        uploadBody.append('image', imageFile);
+      if (API_BASE_URL) {
+        setIsUploading(true);
+        try {
+          const uploadBody = new FormData();
+          uploadBody.append('image', imageFile);
 
-        const uploadRes = await fetch('http://localhost:3000/api/products/upload', {
-          method: 'POST',
-          body: uploadBody
-        });
+          const uploadRes = await fetch(`${API_BASE_URL}/api/products/upload`, {
+            method: 'POST',
+            body: uploadBody
+          });
 
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          finalImageUrl = uploadData.imageUrl || imagePreview;
-        } else {
-          // Fallback to Base64 image data URL
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            finalImageUrl = uploadData.imageUrl || imagePreview;
+          } else {
+            finalImageUrl = imagePreview;
+          }
+        } catch (err) {
+          console.warn("Backend image upload notice, using local preview data:", err);
           finalImageUrl = imagePreview;
+        } finally {
+          setIsUploading(false);
         }
-      } catch (err) {
-        console.warn("Backend image upload notice, using local preview data:", err);
+      } else {
+        // Direct local/base64 preview on offline/static hosting
         finalImageUrl = imagePreview;
-      } finally {
-        setIsUploading(false);
       }
     }
 
@@ -165,14 +174,16 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
 
     if (editingId) {
       // 1. Update in Database
-      try {
-        await fetch(`http://localhost:3000/api/products/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } catch (err) {
-        console.warn("Backend update notice:", err);
+      if (API_BASE_URL) {
+        try {
+          await fetch(`${API_BASE_URL}/api/products/${editingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch (err) {
+          console.warn("Backend update notice:", err);
+        }
       }
 
       // 2. Update in Persistent Local Storage
@@ -192,18 +203,20 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
       let backendCreated = null;
 
       // 1. Try sending to database
-      try {
-        const response = await fetch('http://localhost:3000/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+      if (API_BASE_URL) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/products`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
 
-        if (response.ok) {
-          backendCreated = await response.json();
+          if (response.ok) {
+            backendCreated = await response.json();
+          }
+        } catch (err) {
+          console.warn("Backend offline during product creation, saving locally:", err);
         }
-      } catch (err) {
-        console.warn("Backend offline during product creation, saving locally:", err);
       }
 
       const newProductItem = backendCreated || {
@@ -244,12 +257,14 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to remove this product from the catalog?")) return;
 
-    try {
-      await fetch(`http://localhost:3000/api/products/${id}`, {
-        method: 'DELETE'
-      });
-    } catch (err) {
-      console.warn("Backend delete notice:", err);
+    if (API_BASE_URL) {
+      try {
+        await fetch(`${API_BASE_URL}/api/products/${id}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.warn("Backend delete notice:", err);
+      }
     }
 
     const localCustom = JSON.parse(localStorage.getItem('custom_products')) || [];
