@@ -94,6 +94,46 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
     return `Discover the brand new ${name}. A high-performance item meticulously refined within our signature ${category} catalog division, balancing structural engineering with daily comfort.`;
   };
 
+  const getFallbackEmoji = (name = "") => {
+    const lower = (name || "").toLowerCase();
+    if (lower.includes("headphones") || lower.includes("earbuds")) return "🎧";
+    if (lower.includes("keyboard")) return "⌨️";
+    if (lower.includes("mouse")) return "🖱️";
+    if (lower.includes("wallet")) return "💼";
+    if (lower.includes("shoes") || lower.includes("loafers") || lower.includes("sneakers")) return "👟";
+    if (lower.includes("bottle")) return "🥤";
+    if (lower.includes("lamp") || lower.includes("light")) return "💡";
+    if (lower.includes("watch")) return "⌚";
+    if (lower.includes("backpack") || lower.includes("bag")) return "🎒";
+    if (lower.includes("jacket") || lower.includes("windbreaker") || lower.includes("sweater")) return "🧥";
+    return "📦";
+  };
+
+  const renderItemVisual = (product, isDetail = false) => {
+    if (!product) return "📦";
+    if (product.imageUrl) {
+      return (
+        <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img 
+            src={product.imageUrl} 
+            alt={product.name} 
+            className={isDetail ? "detail-product-img" : "product-card-img"}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              if (e.target.nextElementSibling) {
+                e.target.nextElementSibling.style.display = 'flex';
+              }
+            }}
+          />
+          <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: isDetail ? '6rem' : '3.8rem' }}>
+            {getFallbackEmoji(product.name)}
+          </div>
+        </div>
+      );
+    }
+    return getFallbackEmoji(product.name);
+  };
+
   // Sync products from backend + custom products on mount
   const syncProductsFromSources = useCallback(async () => {
     const custom = JSON.parse(localStorage.getItem('custom_products')) || [];
@@ -354,17 +394,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                             onClick={() => setSelectedProduct(product)}
                             title="Click to view details"
                           >
-                            {product.name?.toLowerCase().includes("headphones") && "🎧"}
-                            {product.name?.toLowerCase().includes("keyboard") && "⌨️"}
-                            {product.name?.toLowerCase().includes("mouse") && "🖱️"}
-                            {product.name?.toLowerCase().includes("wallet") && "💼"}
-                            {product.name?.toLowerCase().includes("shoes") && "👟"}
-                            {product.name?.toLowerCase().includes("bottle") && "🥤"}
-                            {product.name?.toLowerCase().includes("lamp") && "💡"}
-                            {product.name?.toLowerCase().includes("watch") && "⌚"}
-                            {product.name?.toLowerCase().includes("backpack") && "🎒"}
-                            {product.name?.toLowerCase().includes("jacket") && "🧥"}
-                            {!["headphones", "keyboard", "mouse", "wallet", "shoes", "bottle", "lamp", "watch", "backpack", "jacket"].some(el => product.name?.toLowerCase().includes(el)) && "📦"}
+                            {renderItemVisual(product, false)}
                           </div>
 
                           <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
@@ -414,17 +444,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                 </button>
                 <div className="product-detail-container">
                   <div className="detail-image-box">
-                    {selectedProduct.name?.toLowerCase().includes("headphones") && "🎧"}
-                    {selectedProduct.name?.toLowerCase().includes("keyboard") && "⌨️"}
-                    {selectedProduct.name?.toLowerCase().includes("mouse") && "🖱️"}
-                    {selectedProduct.name?.toLowerCase().includes("wallet") && "💼"}
-                    {selectedProduct.name?.toLowerCase().includes("shoes") && "👟"}
-                    {selectedProduct.name?.toLowerCase().includes("bottle") && "🥤"}
-                    {selectedProduct.name?.toLowerCase().includes("lamp") && "💡"}
-                    {selectedProduct.name?.toLowerCase().includes("watch") && "⌚"}
-                    {selectedProduct.name?.toLowerCase().includes("backpack") && "🎒"}
-                    {selectedProduct.name?.toLowerCase().includes("jacket") && "🧥"}
-                    {!["headphones", "keyboard", "mouse", "wallet", "shoes", "bottle", "lamp", "watch", "backpack", "jacket"].some(el => selectedProduct.name?.toLowerCase().includes(el)) && "📦"}
+                    {renderItemVisual(selectedProduct, true)}
                   </div>
                   <div className="detail-info">
                     <span className="category-tag">{selectedProduct.category}</span>
@@ -494,6 +514,12 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                   ) : (
                     cart.map((item) => (
                       <div key={item._id} className="cart-item">
+                        <div style={{ width: '42px', height: '42px', borderRadius: '8px', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, border: '1px solid #e2e8f0', fontSize: '20px' }}>
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'block'; }} />
+                          ) : null}
+                          <span style={{ display: item.imageUrl ? 'none' : 'block' }}>{getFallbackEmoji(item.name)}</span>
+                        </div>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontWeight: '600', color: '#0f172a', display: 'block' }}>{item.name}</span>
                           <span style={{ fontSize: '13px', color: '#64748b' }}>${item.price.toFixed(2)} each</span>

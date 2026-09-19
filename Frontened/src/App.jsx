@@ -16,8 +16,14 @@ export default function App() {
   });
 
   const [currentView, setCurrentView] = useState('customer_login'); // 'customer_login', 'admin_login', 'signup'
+  const [prefillEmail, setPrefillEmail] = useState('');
 
   const handleLoginSuccess = (user) => {
+    try {
+      localStorage.setItem('currentUser', JSON.stringify(user));
+    } catch (err) {
+      console.warn('LocalStorage error:', err);
+    }
     setCurrentUser(user);
   };
 
@@ -48,10 +54,15 @@ export default function App() {
       ) : currentView === 'signup' ? (
         <Signup 
           onSignupSuccess={handleLoginSuccess}
-          onSwitchToLogin={() => setCurrentView('customer_login')} 
+          onSwitchToLogin={(email) => {
+            if (email) setPrefillEmail(email);
+            setCurrentView('customer_login');
+          }} 
         />
       ) : (
         <Login 
+          key={prefillEmail || 'default-login'}
+          initialEmail={prefillEmail}
           onLoginSuccess={handleLoginSuccess} 
           onSwitchToSignup={() => setCurrentView('signup')}
           onSwitchToAdminLogin={() => setCurrentView('admin_login')}

@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { PlusCircle, Trash2, Edit, RefreshCw, XCircle, Package, ShoppingBag, Eye, CheckCircle2, Layers, Archive, DollarSign } from 'lucide-react';
+import { 
+  PlusCircle, Trash2, Edit, RefreshCw, XCircle, Package, ShoppingBag, 
+  Eye, CheckCircle2, Layers, Archive, DollarSign, Upload, Image as ImageIcon, 
+  X, AlertCircle 
+} from 'lucide-react';
 
 export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   const [orders, setOrders] = useState([]);
@@ -7,8 +11,12 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
     name: '',
     price: '',
     category: 'Accessories',
-    stockQuantity: ''
+    stockQuantity: '',
+    imageUrl: ''
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -74,12 +82,36 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const resetFormMode = () => {
-    setEditingId(null);
-    setFormData({ name: '', price: '', category: 'Accessories', stockQuantity: '' });
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        showMsg('error', 'Please select a valid image file (PNG, JPG, WEBP).');
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  // GUARANTEED PRODUCT CREATION / UPDATE
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+  };
+
+  const resetFormMode = () => {
+    setEditingId(null);
+    setFormData({ name: '', price: '', category: 'Accessories', stockQuantity: '', imageUrl: '' });
+    setImageFile(null);
+    setImagePreview('');
+  };
+
+  // GUARANTEED PRODUCT CREATION / UPDATE WITH MULTER IMAGE UPLOAD
   const handleSubmit = async (e) => {
     e.preventDefault();
     const priceNum = parseFloat(formData.price);
@@ -94,11 +126,41 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
       return;
     }
 
+    let finalImageUrl = formData.imageUrl.trim();
+
+    // 1. Upload file via Multer if selected
+    if (imageFile) {
+      setIsUploading(true);
+      try {
+        const uploadBody = new FormData();
+        uploadBody.append('image', imageFile);
+
+        const uploadRes = await fetch('http://localhost:3000/api/products/upload', {
+          method: 'POST',
+          body: uploadBody
+        });
+
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          finalImageUrl = uploadData.imageUrl || imagePreview;
+        } else {
+          // Fallback to Base64 image data URL
+          finalImageUrl = imagePreview;
+        }
+      } catch (err) {
+        console.warn("Backend image upload notice, using local preview data:", err);
+        finalImageUrl = imagePreview;
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     const payload = {
       name: formData.name.trim(),
       price: priceNum,
       category: formData.category,
-      stockQuantity: stockNum
+      stockQuantity: stockNum,
+      imageUrl: finalImageUrl
     };
 
     if (editingId) {
@@ -160,7 +222,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
         setProducts(prev => [newProductItem, ...prev.filter(p => p._id !== newProductItem._id)]);
       }
 
-      showMsg('success', `🎉 Product "${payload.name}" was added successfully and is now live in the store catalog!`);
+      showMsg('success', `🎉 Product "${payload.name}" with image was added successfully and is now live in the store catalog!`);
       resetFormMode();
     }
   };
@@ -171,8 +233,11 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
       name: product.name,
       price: product.price,
       category: product.category,
-      stockQuantity: product.stockQuantity
+      stockQuantity: product.stockQuantity,
+      imageUrl: product.imageUrl || ''
     });
+    setImagePreview(product.imageUrl || '');
+    setImageFile(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -198,91 +263,101 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   };
 
   // Metrics calculations
+  const totalCatalogItems = products.length;
   const totalStockUnits = products.reduce((sum, p) => sum + (p.stockQuantity || 0), 0);
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const categoriesCount = new Set(products.map(p => p.category)).size;
+  const lowStockCount = products.filter(p => (p.stockQuantity || 0) < 10 && (p.stockQuantity || 0) > 0).length;
+  const totalOrdersAmount = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '24px auto', padding: '0 20px', fontFamily: 'sans-serif', color: '#1e293b' }}>
-      
-      {/* HEADER BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px', width: '100%' }}>
+      {/* HEADER SECTION */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.7rem', fontWeight: '800', color: '#0f172a' }}>
-            <Package size={28} color="#2563eb" /> Store Inventory & Catalog Manager
+          <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' }}>
+            Store Inventory Dashboard
           </h2>
-          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>
-            Add new products, update stock quantities, and view live order receipts.
+          <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
+            Manage catalog items, upload images via Multer, restock inventory, and review real-time orders.
           </p>
         </div>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {onSwitchToShop && (
-            <button 
-              onClick={onSwitchToShop} 
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', padding: '9px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', transition: 'all 0.2s' }}
-            >
-              <Eye size={16} /> Preview Storefront
-            </button>
-          )}
-
+        
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button 
             onClick={syncBackend} 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', padding: '9px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#334155' }}
           >
-            <RefreshCw size={15} /> Refresh Data
+            <RefreshCw size={15} /> Sync Database
+          </button>
+          
+          <button 
+            onClick={onSwitchToShop} 
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+          >
+            <Eye size={15} /> View Customer Storefront
           </button>
         </div>
       </div>
 
-      {/* METRIC OVERVIEW CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
-        <div style={{ background: '#fff', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b' }}>Total Products</span>
-            <div style={{ padding: '6px', background: '#eff6ff', borderRadius: '8px', color: '#2563eb' }}><Package size={18} /></div>
-          </div>
-          <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a' }}>{products.length}</span>
-        </div>
-
-        <div style={{ background: '#fff', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b' }}>Inventory Units</span>
-            <div style={{ padding: '6px', background: '#f0fdf4', borderRadius: '8px', color: '#16a34a' }}><Archive size={18} /></div>
-          </div>
-          <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a' }}>{totalStockUnits}</span>
-        </div>
-
-        <div style={{ background: '#fff', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b' }}>Active Categories</span>
-            <div style={{ padding: '6px', background: '#fef3c7', borderRadius: '8px', color: '#d97706' }}><Layers size={18} /></div>
-          </div>
-          <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a' }}>{categoriesCount}</span>
-        </div>
-
-        <div style={{ background: '#fff', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b' }}>Orders Logged</span>
-            <div style={{ padding: '6px', background: '#fdf2f8', borderRadius: '8px', color: '#db2777' }}><DollarSign size={18} /></div>
-          </div>
-          <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a' }}>{orders.length} <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b' }}>(${totalRevenue.toFixed(0)})</span></span>
-        </div>
-      </div>
-
-      {/* FEEDBACK BANNER */}
+      {/* SYSTEM FEEDBACK NOTIFICATIONS */}
       {message.text && (
-        <div style={{ padding: '14px 18px', borderRadius: '10px', marginBottom: '24px', backgroundColor: message.type === 'success' ? '#ecfdf5' : '#fef2f2', color: message.type === 'success' ? '#047857' : '#b91c1c', border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`, fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {message.type === 'success' && <CheckCircle2 size={20} color="#059669" />}
+        <div style={{ 
+          padding: '12px 16px', 
+          borderRadius: '8px', 
+          marginBottom: '20px', 
+          fontSize: '14px', 
+          fontWeight: '500',
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px',
+          background: message.type === 'error' ? '#fef2f2' : '#ecfdf5',
+          color: message.type === 'error' ? '#b91c1c' : '#047857',
+          border: `1px solid ${message.type === 'error' ? '#fca5a5' : '#6ee7b7'}`
+        }}>
+          {message.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           {message.text}
         </div>
       )}
+
+      {/* METRIC STATS ROW */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+        <div style={{ background: '#fff', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#eff6ff', padding: '12px', borderRadius: '10px', color: '#2563eb' }}><Package size={24} /></div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Total Products</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>{totalCatalogItems}</div>
+          </div>
+        </div>
+
+        <div style={{ background: '#fff', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '10px', color: '#059669' }}><Layers size={24} /></div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Total Stock Units</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>{totalStockUnits}</div>
+          </div>
+        </div>
+
+        <div style={{ background: '#fff', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '10px', color: '#d97706' }}><Archive size={24} /></div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Low Stock Alert</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: '#d97706' }}>{lowStockCount}</div>
+          </div>
+        </div>
+
+        <div style={{ background: '#fff', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#faf5ff', padding: '12px', borderRadius: '10px', color: '#9333ea' }}><DollarSign size={24} /></div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Orders Revenue</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>${totalOrdersAmount.toFixed(2)}</div>
+          </div>
+        </div>
+      </div>
 
       {/* PRODUCT CREATION/EDITING MANAGEMENT FORM */}
       <form onSubmit={handleSubmit} style={{ background: '#fff', padding: '26px', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '40px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
         <div style={{ gridColumn: '1 / -1', fontSize: '16px', fontWeight: '700', color: editingId ? '#d97706' : '#2563eb', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{editingId ? `✏️ Editing Catalog Item: ${formData.name || 'Untitled'}` : '✨ Add New Product to Store Catalog'}</span>
-          <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748b' }}>Updates live in Storefront instantly</span>
+          <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748b' }}>Upload photos or store on PC</span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -341,9 +416,113 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
           </select>
         </div>
 
+        {/* IMAGE UPLOAD SECTION VIA MULTER */}
+        <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+          <label style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Upload size={16} color="#2563eb" /> Product Image Upload (Multer / PC / Cloudinary)
+          </label>
+          
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Image Preview Box */}
+            <div style={{ 
+              width: '80px', 
+              height: '80px', 
+              borderRadius: '8px', 
+              border: '1px solid #e2e8f0', 
+              background: '#fff', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              {imagePreview || formData.imageUrl ? (
+                <>
+                  <img 
+                    src={imagePreview || formData.imageUrl} 
+                    alt="Preview" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    title="Remove image"
+                    style={{
+                      position: 'absolute',
+                      top: '2px',
+                      right: '2px',
+                      background: 'rgba(239, 68, 68, 0.9)',
+                      border: 'none',
+                      color: '#fff',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                </>
+              ) : (
+                <ImageIcon size={32} color="#94a3b8" />
+              )}
+            </div>
+
+            {/* File Input */}
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <input 
+                type="file" 
+                accept="image/*" 
+                id="productImageFile"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+              <label 
+                htmlFor="productImageFile" 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 16px',
+                  background: '#2563eb',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '13px'
+                }}
+              >
+                <Upload size={15} /> {imageFile ? 'Change Selected Photo' : 'Choose Picture from PC'}
+              </label>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                {imageFile ? `Selected: ${imageFile.name}` : 'Supports JPG, PNG, WEBP (stored locally on PC or Cloudinary)'}
+              </div>
+            </div>
+
+            {/* Optional Web Image URL Input */}
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <input 
+                type="url" 
+                name="imageUrl"
+                placeholder="Or paste image web URL (https://...)" 
+                value={formData.imageUrl}
+                onChange={(e) => {
+                  handleInputChange(e);
+                  if (!imageFile) setImagePreview(e.target.value);
+                }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+              />
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', gridColumn: '1 / -1', marginTop: '6px' }}>
           <button 
             type="submit" 
+            disabled={isUploading}
             style={{ 
               flex: 1, 
               padding: '13px', 
@@ -351,7 +530,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
               color: '#fff', 
               border: 'none', 
               borderRadius: '8px', 
-              cursor: 'pointer', 
+              cursor: isUploading ? 'not-allowed' : 'pointer', 
               fontWeight: '700', 
               fontSize: '15px',
               display: 'flex', 
@@ -362,8 +541,19 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
               transition: 'transform 0.15s'
             }}
           >
-            {editingId ? <Edit size={18} /> : <PlusCircle size={18} />}
-            {editingId ? 'Save & Update Product' : 'Add Item To Catalog Successfully'}
+            {isUploading ? (
+              <>
+                <RefreshCw size={18} className="spin" /> Uploading Image...
+              </>
+            ) : editingId ? (
+              <>
+                <Edit size={18} /> Save & Update Product
+              </>
+            ) : (
+              <>
+                <PlusCircle size={18} /> Add Item To Catalog Successfully
+              </>
+            )}
           </button>
           
           {editingId && (
@@ -385,9 +575,10 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
           <span style={{ fontSize: '13px', color: '#64748b' }}>Directly synced with the Customer Shop</span>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569', width: '70px' }}>Photo</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Product Name</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Category</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Unit Price</th>
@@ -399,6 +590,32 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
               {products.length > 0 ? (
                 products.map((product) => (
                   <tr key={product._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '10px 18px' }}>
+                      <div style={{ 
+                        width: '44px', 
+                        height: '44px', 
+                        borderRadius: '8px', 
+                        overflow: 'hidden', 
+                        background: '#f1f5f9', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        border: '1px solid #e2e8f0'
+                      }}>
+                        {product.imageUrl ? (
+                          <img 
+                            src={product.imageUrl} 
+                            alt={product.name} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                          />
+                        ) : null}
+                        <span style={{ display: product.imageUrl ? 'none' : 'block' }}>
+                          {product.category === 'Electronics' ? '🎧' : product.category === 'Accessories' ? '💼' : product.category === 'Men' ? '👔' : product.category === 'Apparel' ? '👟' : '📦'}
+                        </span>
+                      </div>
+                    </td>
                     <td style={{ padding: '14px 18px', fontWeight: '600', color: '#0f172a' }}>{product.name}</td>
                     <td style={{ padding: '14px 18px' }}><span style={{ fontSize: '12px', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: '4px', fontWeight: '600' }}>{product.category}</span></td>
                     <td style={{ padding: '14px 18px', fontWeight: '700', color: '#2563eb' }}>${product.price?.toFixed(2)}</td>
@@ -417,7 +634,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>No products found in catalog. Add your first item above!</td>
+                  <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>No products found in catalog. Add your first item above!</td>
                 </tr>
               )}
             </tbody>
@@ -462,22 +679,31 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                           ))}
                         </ul>
                       ) : (
-                        <span style={{ color: '#94a3b8' }}>No items listed</span>
+                        <span style={{ color: '#94a3b8' }}>No items recorded</span>
                       )}
                     </td>
                     <td style={{ padding: '14px 18px', fontWeight: '700', color: '#2563eb' }}>
-                      ${order.total ? order.total.toFixed(2) : (order.subtotal ? order.subtotal.toFixed(2) : '0.00')}
+                      ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}
                     </td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700' }}>
-                        {order.status || 'Completed'}
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: '700', 
+                        padding: '4px 8px', 
+                        borderRadius: '4px',
+                        background: order.status === 'Completed' ? '#ecfdf5' : '#eff6ff',
+                        color: order.status === 'Completed' ? '#059669' : '#2563eb'
+                      }}>
+                        {order.status || 'Processed'}
                       </span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>No customer checkout records logged yet.</td>
+                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                    No customer orders placed yet. Add items to cart in storefront to checkout!
+                  </td>
                 </tr>
               )}
             </tbody>

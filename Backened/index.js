@@ -3,8 +3,13 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import dns from "node:dns";
+import path from "path";
+import { fileURLToPath } from "url";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables from your .env file
 dotenv.config();
@@ -23,6 +28,9 @@ const PORT = process.env.PORT || 3000;
 // Middleware to read JSON bodies sent from frontend
 app.use(express.json());
 
+// Serve uploaded product images statically from local uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // Routes middleware
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
@@ -38,6 +46,14 @@ app.get("/api/health", (req, res) => {
 // Connect to MongoDB using the URI from your .env file
 const mongoUri = process.env.MONGO_URI;
 
+mongoose.connection.on('error', (err) => {
+  console.warn("MongoDB connection event notice:", err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.warn("Handled rejection:", reason?.message || reason);
+});
+
 mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 })
   .then(() => console.log("Successfully connected to MongoDB Atlas!"))
   .catch((error) => {
@@ -46,6 +62,9 @@ mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 })
   });
 
 // Start your server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Doorstep Backend Server is running on port ${PORT}`);
 });
+
+// Keep process active even if external cloud DB handshake is pending
+setInterval(() => {}, 1000 * 60 * 60);

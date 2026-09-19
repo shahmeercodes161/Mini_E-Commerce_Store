@@ -4,8 +4,8 @@ import Sociallogin from '../Components/Sociallogin';
 import { Mail, Lock, LogIn, ShieldAlert } from 'lucide-react';
 import './Login.css';
 
-export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToAdminLogin }) {
-  const [email, setEmail] = useState('');
+export default function Login({ initialEmail = '', onLoginSuccess, onSwitchToSignup, onSwitchToAdminLogin }) {
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
