@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Inputfield from '../Components/Inputfield';
 import Sociallogin from '../Components/Sociallogin';
-import { Mail, Lock, User, UserPlus, CheckCircle2, ArrowRight, ShoppingBag, X } from 'lucide-react';
+import { Mail, Lock, User, UserPlus } from 'lucide-react';
 import './Login.css';
 
 export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
@@ -9,8 +9,6 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdUser, setCreatedUser] = useState(null);
 
   const handleSignup = (e) => {
     e.preventDefault();
@@ -44,23 +42,11 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
       console.warn('LocalStorage error:', err);
     }
 
-    setCreatedUser(newUser);
-    setShowSuccessModal(true);
-  };
-
-  const handleDirectShop = () => {
-    setShowSuccessModal(false);
-    if (onSignupSuccess && createdUser) {
-      onSignupSuccess(createdUser);
+    // Direct transition without confirmation prompt
+    if (onSignupSuccess) {
+      onSignupSuccess(newUser);
     } else if (onSwitchToLogin) {
-      onSwitchToLogin(createdUser?.email || email.trim());
-    }
-  };
-
-  const handleGoToSignIn = () => {
-    setShowSuccessModal(false);
-    if (onSwitchToLogin) {
-      onSwitchToLogin(createdUser?.email || email.trim());
+      onSwitchToLogin(newUser.email);
     }
   };
 
@@ -125,85 +111,6 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
 
         <Sociallogin />
       </div>
-
-      {/* POPUP MODAL MESSAGE UPON ACCOUNT CREATION */}
-      {showSuccessModal && (
-        <div className="modal-backdrop" onClick={handleDirectShop}>
-          <div 
-            className="modal-dialog" 
-            style={{ position: 'relative' }} 
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={handleDirectShop}
-              aria-label="Close popup"
-              style={{
-                position: 'absolute',
-                top: '14px',
-                right: '14px',
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '6px'
-              }}
-            >
-              <X size={20} />
-            </button>
-
-            <div className="modal-icon">
-              <CheckCircle2 size={44} color="#10b981" />
-            </div>
-
-            <h3 style={{ fontSize: '1.35rem', color: '#0f172a', marginBottom: '8px' }}>
-              Account Created Successfully! 🎉
-            </h3>
-            
-            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.5', margin: '0 0 1.2rem 0' }}>
-              Welcome, <strong>{createdUser?.name}</strong>! Your Doorstep shopping profile is registered. You can jump straight into the store or sign in anytime.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
-              <button
-                type="button"
-                onClick={handleDirectShop}
-                className="submit-btn"
-                style={{ width: '100%', gap: '8px', fontSize: '1rem', cursor: 'pointer', margin: 0 }}
-              >
-                <ShoppingBag size={18} /> Start Shopping Now
-              </button>
-
-              <button
-                type="button"
-                onClick={handleGoToSignIn}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '10px',
-                  background: '#f8fafc',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  fontWeight: '600',
-                  fontSize: '0.92rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'background 0.15s'
-                }}
-              >
-                Proceed to Sign In <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
