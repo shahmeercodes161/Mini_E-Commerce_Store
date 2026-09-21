@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Inputfield from '../Components/Inputfield';
 import Sociallogin from '../Components/Sociallogin';
 import { Mail, Lock, User, UserPlus } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 import './Login.css';
 
 export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
@@ -9,8 +10,9 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setErrorMessage('');
     
@@ -20,33 +22,68 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
+    setIsSubmitting(true);
 
-    // Check if email already exists
-    if (existingUsers.some(u => u.email.toLowerCase() === trimmedEmail)) {
-      setErrorMessage('An account with this email address already exists. Please sign in.');
-      return;
-    }
-
-    // Create new user object
-    const newUser = { name: name.trim(), email: trimmedEmail, password, role: 'customer' };
-
-    // Save user in users catalog
-    existingUsers.push(newUser);
-    localStorage.setItem('users', JSON.stringify(existingUsers));
-
-    // Persist as current active user
     try {
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
-    } catch (err) {
-      console.warn('LocalStorage error:', err);
-    }
+      let registeredUser = null;
 
-    // Direct transition without confirmation prompt
-    if (onSignupSuccess) {
-      onSignupSuccess(newUser);
-    } else if (onSwitchToLogin) {
-      onSwitchToLogin(newUser.email);
+      // 1. Send registration to Backend / Database
+      if (API_BASE_URL) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name.trim(),
+              email: trimmedEmail,
+              password
+            })
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            setErrorMessage(data.message || 'Registration failed. Please check your information.');
+            setIsSubmitting(false);
+            return;
+          }
+
+          registeredUser = data.user;
+        } catch (apiErr) {
+          console.warn('Backend API connection notice, falling back locally:', apiErr);
+        }
+      }
+
+      // 2. Prepare user object
+      const newUser = registeredUser || { 
+        _id: 'local-' + Date.now(), 
+        name: name.trim(), 
+        email: trimmedEmail, 
+        password, 
+        role: 'customer' 
+      };
+
+      // 3. Update local backup
+      const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
+      if (!existingUsers.some(u => u.email.toLowerCase() === trimmedEmail)) {
+        existingUsers.push(newUser);
+        localStorage.setItem('users', JSON.stringify(existingUsers));
+      }
+
+      try {
+        localStorage.setItem('currentUser', JSON.stringify(newUser));
+      } catch (err) {
+        console.warn('LocalStorage error:', err);
+      }
+
+      // 4. Authenticate directly
+      if (onSignupSuccess) {
+        onSignupSuccess(newUser);
+      } else if (onSwitchToLogin) {
+        onSwitchToLogin(newUser.email);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -92,8 +129,8 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
             icon={<Lock size={18} />}
           />
 
-          <button type="submit" className="submit-btn" style={{ cursor: 'pointer' }}>
-            <UserPlus size={18} /> Sign Up
+          <button type="submit" className="submit-btn" disabled={isSubmitting} style={{ cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.75 : 1 }}>
+            <UserPlus size={18} /> {isSubmitting ? 'Creating Account...' : 'Sign Up'}
           </button>
         </form>
 

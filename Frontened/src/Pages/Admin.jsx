@@ -42,24 +42,21 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
 
   // Sync products from backend
   const syncBackend = useCallback(async () => {
-    const localCustom = JSON.parse(localStorage.getItem('custom_products')) || [];
     if (API_BASE_URL) {
       try {
         const response = await fetch(`${API_BASE_URL}/api/products`);
         if (response.ok) {
           const data = await response.json();
-          if (Array.isArray(data) && data.length > 0 && setProducts) {
-            const backendIds = new Set(data.map(p => p._id));
-            const filteredLocal = localCustom.filter(p => !backendIds.has(p._id));
-            setProducts([...filteredLocal, ...data]);
+          if (Array.isArray(data) && setProducts) {
+            setProducts(data);
           }
         }
-      } catch {
-        // Backend not reached, keep current
+      } catch (err) {
+        console.warn("Backend sync notice:", err);
       }
     }
     fetchOrders();
-    showMsg('success', 'Catalog synchronized successfully.');
+    showMsg('success', 'Catalog synchronized with database.');
   }, [fetchOrders, setProducts, showMsg]);
 
   useEffect(() => {

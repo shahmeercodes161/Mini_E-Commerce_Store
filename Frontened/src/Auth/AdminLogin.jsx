@@ -1,39 +1,75 @@
 import { useState } from 'react';
 import Inputfield from '../Components/Inputfield';
 import { Mail, Lock, ShieldCheck, ArrowLeft, KeyRound, Sparkles } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 import './Login.css';
 
 export default function AdminLogin({ onAdminLoginSuccess, onSwitchToCustomerLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
     const trimmedEmail = email.trim().toLowerCase();
-    const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
+    if (!trimmedEmail || !password) {
+      setErrorMessage('Please enter both your email address and password.');
+      return;
+    }
 
-    // Admin accounts: built-in admin or user registered with admin role
-    const isDefaultAdmin = (trimmedEmail === 'admin@doorstep.com' && password === 'admin123');
-    const matchedAdmin = existingUsers.find(
-      (u) => u.email.toLowerCase() === trimmedEmail && u.password === password && u.role === 'admin'
-    );
+    setIsLoading(true);
 
-    if (isDefaultAdmin || matchedAdmin) {
-      const adminUser = matchedAdmin || {
-        name: 'Master Admin',
-        email: 'admin@doorstep.com',
-        role: 'admin'
-      };
+    try {
+      let adminUser = null;
 
-      localStorage.setItem('currentUser', JSON.stringify(adminUser));
-      if (onAdminLoginSuccess) {
-        onAdminLoginSuccess(adminUser);
+      // 1. Authenticate with backend API
+      if (API_BASE_URL) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: trimmedEmail, password })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.user && data.user.role === 'admin') {
+            adminUser = data.user;
+          }
+        } catch (apiErr) {
+          console.warn('Backend connection notice during admin login:', apiErr);
+        }
       }
-    } else {
-      setErrorMessage('Invalid admin credentials. Use admin@doorstep.com / admin123 or register an admin account.');
+
+      // 2. Fallback check for built-in admin or local admin backup
+      if (!adminUser) {
+        const isDefaultAdmin = (trimmedEmail === 'admin@doorstep.com' && password === 'admin123');
+        const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
+        const matchedAdmin = existingUsers.find(
+          (u) => u.email.toLowerCase() === trimmedEmail && u.password === password && u.role === 'admin'
+        );
+
+        if (isDefaultAdmin || matchedAdmin) {
+          adminUser = matchedAdmin || {
+            name: 'Master Admin',
+            email: 'admin@doorstep.com',
+            role: 'admin'
+          };
+        }
+      }
+
+      if (adminUser) {
+        localStorage.setItem('currentUser', JSON.stringify(adminUser));
+        if (onAdminLoginSuccess) {
+          onAdminLoginSuccess(adminUser);
+        }
+      } else {
+        setErrorMessage('Invalid admin credentials. Use admin@doorstep.com / admin123 or check your permissions.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -104,13 +140,16 @@ export default function AdminLogin({ onAdminLoginSuccess, onSwitchToCustomerLogi
           <button 
             type="submit" 
             className="submit-btn" 
+            disabled={isLoading}
             style={{ 
               background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', 
               boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-              marginTop: '12px'
+              marginTop: '12px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.75 : 1
             }}
           >
-            <KeyRound size={18} /> Sign In to Dashboard
+            <KeyRound size={18} /> {isLoading ? 'Authenticating...' : 'Sign In to Dashboard'}
           </button>
         </form>
 

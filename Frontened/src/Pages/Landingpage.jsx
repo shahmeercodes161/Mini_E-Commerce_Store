@@ -4,6 +4,7 @@ import Navbar from '../Components/Navbar';
 import About from './About';
 import Contact from './Contact';
 import Admin from './Admin';
+import { API_BASE_URL } from '../config/api';
 
 const DEFAULT_CATALOG = [
   { _id: 'seed-1', name: 'Wireless Headphones', category: 'Electronics', price: 79.99, stockQuantity: 25 },
@@ -134,55 +135,26 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
     return getFallbackEmoji(product.name);
   };
 
-  // Sync products from backend + custom products on mount
-  const syncProductsFromSources = useCallback(async () => {
-    const custom = JSON.parse(localStorage.getItem('custom_products')) || [];
+  // Fetch products directly from backend database API
+  const loadCatalog = useCallback(async () => {
+    if (!API_BASE_URL) return;
     try {
-      const response = await fetch('http://localhost:3000/api/products');
+      const response = await fetch(`${API_BASE_URL}/api/products`);
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          const backendIds = new Set(data.map(p => p._id));
-          const filteredCustom = custom.filter(p => !backendIds.has(p._id));
-          setProducts([...filteredCustom, ...data]);
+          setProducts(data);
           return;
         }
       }
-    } catch {
-      // Backend not running, use custom + defaults
+    } catch (err) {
+      console.warn("Backend catalog fetch notice, using fallback items:", err);
     }
-    const customIds = new Set(custom.map(p => p._id));
-    const filteredDefault = DEFAULT_CATALOG.filter(p => !customIds.has(p._id));
-    setProducts([...custom, ...filteredDefault]);
   }, []);
 
   useEffect(() => {
-    let ignore = false;
-    async function loadCatalog() {
-      const custom = JSON.parse(localStorage.getItem('custom_products')) || [];
-      try {
-        const response = await fetch('http://localhost:3000/api/products');
-        if (response.ok) {
-          const data = await response.json();
-          if (!ignore && Array.isArray(data) && data.length > 0) {
-            const backendIds = new Set(data.map(p => p._id));
-            const filteredCustom = custom.filter(p => !backendIds.has(p._id));
-            setProducts([...filteredCustom, ...data]);
-            return;
-          }
-        }
-      } catch {
-        // Backend not running, use local custom + default catalog
-      }
-      if (!ignore) {
-        const customIds = new Set(custom.map(p => p._id));
-        const filteredDefault = DEFAULT_CATALOG.filter(p => !customIds.has(p._id));
-        setProducts([...custom, ...filteredDefault]);
-      }
-    }
     loadCatalog();
-    return () => { ignore = true; };
-  }, []);
+  }, [loadCatalog]);
 
   const addToCart = (product) => {
     setCart((prevCart) => {
