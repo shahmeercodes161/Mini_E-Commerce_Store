@@ -39,6 +39,10 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Completed'],
     default: 'Completed'
+  },
+  paymentMethod: {
+    type: String,
+    default: 'Stripe'
   }
 }, { timestamps: true });
 

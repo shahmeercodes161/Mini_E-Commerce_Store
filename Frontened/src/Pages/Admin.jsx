@@ -668,6 +668,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Email Address</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Items Ordered</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Total Amount</th>
+                <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Payment Method</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Status</th>
               </tr>
             </thead>
@@ -695,7 +696,20 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                       )}
                     </td>
                     <td style={{ padding: '14px 18px', fontWeight: '700', color: '#2563eb' }}>
-                      ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}
+                      ${((order.total !== undefined ? order.total : order.totalAmount) || 0).toFixed(2)}
+                    </td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ 
+                        fontSize: '12px', 
+                        fontWeight: '600', 
+                        padding: '4px 8px', 
+                        borderRadius: '4px',
+                        background: (order.paymentMethod || 'Stripe').includes('Stripe') ? '#f5f3ff' : '#f8fafc',
+                        color: (order.paymentMethod || 'Stripe').includes('Stripe') ? '#635bff' : '#475569',
+                        border: (order.paymentMethod || 'Stripe').includes('Stripe') ? '1px solid #ddd6fe' : '1px solid #e2e8f0'
+                      }}>
+                        {order.paymentMethod || 'Stripe'}
+                      </span>
                     </td>
                     <td style={{ padding: '14px 18px' }}>
                       <span style={{ 
@@ -713,7 +727,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                     No customer orders placed yet. Add items to cart in storefront to checkout!
                   </td>
                 </tr>

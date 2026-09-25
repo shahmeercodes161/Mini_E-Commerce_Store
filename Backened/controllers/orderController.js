@@ -4,7 +4,7 @@ import Product from '../models/Product.js';
 // 1. Process Checkout (Verify stock, calculate total, deduct inventory, save order)
 export const checkout = async (req, res) => {
   try {
-    const { customerName, customerEmail, cartItems } = req.body;
+    const { customerName, customerEmail, cartItems, paymentMethod } = req.body;
 
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: "Your shopping cart is empty" });
@@ -53,7 +53,8 @@ export const checkout = async (req, res) => {
       items: finalOrderItems,
       subtotal: parseFloat(subtotal.toFixed(2)),
       total,
-      status: 'Completed' // Simulated immediate payment authorization success
+      status: 'Completed',
+      paymentMethod: paymentMethod || 'Stripe'
     });
 
     await newOrder.save();

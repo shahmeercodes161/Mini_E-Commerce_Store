@@ -168,12 +168,15 @@ export default function Navbar({
                 padding: '10px',
                 textAlign: 'left',
                 borderRadius: '6px',
-                fontSize: '15px',
+                fontSize: '14px',
                 fontWeight: '600',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              🛍️ Shop Storefront
+              <ShoppingBag size={16} /> Shop Storefront
             </button>
             <button
               onClick={() => navigateTo("about")}
@@ -184,12 +187,15 @@ export default function Navbar({
                 padding: '10px',
                 textAlign: 'left',
                 borderRadius: '6px',
-                fontSize: '15px',
+                fontSize: '14px',
                 fontWeight: '600',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              ℹ️ About Doorstep
+              <User size={16} /> About Doorstep
             </button>
             <button
               onClick={() => navigateTo("contact")}
@@ -200,12 +206,15 @@ export default function Navbar({
                 padding: '10px',
                 textAlign: 'left',
                 borderRadius: '6px',
-                fontSize: '15px',
+                fontSize: '14px',
                 fontWeight: '600',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              ✉️ Contact Us
+              <Search size={16} /> Contact Us
             </button>
 
             {isAdmin && (

@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 import { seedInitialData } from "./seedProducts.js";
 import { syncPendingUsers } from "./controllers/authController.js";
 
@@ -38,6 +39,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // Health check route
 app.get("/api/health", (req, res) => {
