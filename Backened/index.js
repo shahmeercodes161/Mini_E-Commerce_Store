@@ -35,20 +35,6 @@ app.use(express.json());
 // Serve uploaded product images statically from local uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes middleware
-app.use("/api/products", productRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/payment", paymentRoutes);
-
-// Health check route
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
-  });
-});
-
 // Connect to MongoDB using the URI from your .env file
 let mongoUri = process.env.MONGO_URI || "";
 // Ensure targeted database is 'ecommerce' if default root path
@@ -75,8 +61,8 @@ process.on('unhandledRejection', (reason) => {
 });
 
 let isConnecting = false;
-async function connectToMongo() {
-  if (mongoose.connection.readyState === 1 || isConnecting) return;
+export async function connectToMongo() {
+  if (mongoose.connection.readyState === 1 || isConnecting || !mongoUri) return;
   isConnecting = true;
   try {
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
@@ -91,17 +77,50 @@ async function connectToMongo() {
 // Initial connection attempt
 connectToMongo();
 
-// Auto-reconnect loop every 10 seconds if disconnected (detects IP whitelist changes automatically)
-setInterval(() => {
-  if (mongoose.connection.readyState !== 1) {
-    connectToMongo();
+// Serverless middleware: ensure MongoDB is connected for database-dependent routes
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1 && mongoUri) {
+    try {
+      await connectToMongo();
+    } catch {}
   }
-}, 10000);
-
-// Start your server
-const server = app.listen(PORT, () => {
-  console.log(`Doorstep Backend Server is running on port ${PORT}`);
+  next();
 });
 
-// Keep process active even if external cloud DB handshake is pending
-setInterval(() => {}, 1000 * 60 * 60);
+// Routes middleware (mounted both with and without /api prefix for maximum hosting compatibility)
+app.use("/api/products", productRoutes);
+app.use("/products", productRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/orders", orderRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/payment", paymentRoutes);
+
+// Health check route
+app.get(["/api/health", "/health", "/api", "/"], (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Doorstep API Backend is operational",
+    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    environment: process.env.VERCEL ? "vercel-serverless" : "standalone-node"
+  });
+});
+
+// Standalone mode: Only listen on port when not running as a Vercel serverless function
+if (!process.env.VERCEL) {
+  // Auto-reconnect loop every 10 seconds if disconnected
+  setInterval(() => {
+    if (mongoose.connection.readyState !== 1) {
+      connectToMongo();
+    }
+  }, 10000);
+
+  // Start your local server
+  app.listen(PORT, () => {
+    console.log(`Doorstep Backend Server is running on port ${PORT}`);
+  });
+}
+
+export default app;

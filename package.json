@@ -10,9 +10,14 @@
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
     "lucide-react": "^1.45.0",
+    "mongoose": "^9.10.2",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "stripe": "^22.6.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",

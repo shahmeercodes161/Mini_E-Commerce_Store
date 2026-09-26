@@ -194,17 +194,28 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
         }),
       });
 
-      const data = await res.json();
+      let data = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(
+          res.status === 404
+            ? "Payment API route not found. Make sure Vercel backend function is deployed."
+            : `Server returned error (${res.status}): ${text.slice(0, 100)}`
+        );
+      }
 
       if (res.ok && data.url) {
         window.location.href = data.url; // Redirect to Stripe's secure page
       } else {
-        showToast(`⚠️ Stripe error: ${data.message || 'Please try again'}`);
+        showToast(`⚠️ Stripe error: ${data.message || 'Please check Stripe configuration'}`);
         setIsProcessingStripe(false);
       }
     } catch (err) {
       console.error("Stripe Checkout Error:", err);
-      showToast("⚠️ Could not connect to payment server");
+      showToast(`⚠️ ${err.message || 'Could not connect to payment server'}`);
       setIsProcessingStripe(false);
     }
   };

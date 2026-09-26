@@ -2,12 +2,18 @@ import Stripe from 'stripe';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// =========================================================================
-// 1. INITIALIZE STRIPE
-// We pass our Secret Key from the .env file.
-// The secret key authorizes our server to talk securely with Stripe API.
-// =========================================================================
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// Lazy-getter for Stripe so missing environment variables do not crash module loading
+let stripeInstance = null;
+const getStripe = () => {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is missing. Please add STRIPE_SECRET_KEY to your Vercel Project Environment Variables.");
+  }
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(secretKey);
+  }
+  return stripeInstance;
+};
 
 /**
  * Controller: createCheckoutSession
@@ -64,6 +70,14 @@ export const createCheckoutSession = async (req, res) => {
       };
     });
 
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({
+        message: "Stripe Secret Key is missing. Please add STRIPE_SECRET_KEY to your Vercel Project Environment Variables.",
+      });
+    }
+
+    const stripe = getStripe();
+
     // Create the Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -87,7 +101,7 @@ export const createCheckoutSession = async (req, res) => {
   } catch (error) {
     console.error("Stripe Session Creation Error:", error);
     res.status(500).json({
-      message: "Failed to create Stripe payment session",
+      message: error.message || "Failed to create Stripe payment session",
       error: error.message,
     });
   }
@@ -101,6 +115,14 @@ export const createCheckoutSession = async (req, res) => {
 export const verifyPaymentSession = async (req, res) => {
   try {
     const { sessionId } = req.params;
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({
+        message: "Stripe Secret Key is missing in Vercel Environment Variables.",
+      });
+    }
+
+    const stripe = getStripe();
 
     // Retrieve the checkout session directly from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId);
