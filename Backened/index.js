@@ -83,7 +83,7 @@ connectToMongo().catch(() => {});
 // Serverless middleware: ensure MongoDB is connected for database-dependent routes
 app.use(async (req, res, next) => {
   // Normalize rewritten path from Vercel if needed
-  if (req.url === '/api/index.js' || req.url === '/index.js' || req.url === '/api' || req.url === '/api/') {
+  if (req.url === '/api/index.js' || req.url === '/index.js' || req.url === '/api' || req.url === '/api/' || req.url === '/api/index') {
     const matched = req.headers['x-matched-path'];
     if (matched && matched !== req.url) {
       req.url = matched;
