@@ -50,7 +50,7 @@ export const createCheckoutSession = async (req, res) => {
       } catch {}
     }
     if (!clientUrl) {
-      clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+      clientUrl = process.env.CLIENT_URL || "https://mini-e-commerce-store-two.vercel.app";
     }
 
     // Format each cart item for Stripe line_items

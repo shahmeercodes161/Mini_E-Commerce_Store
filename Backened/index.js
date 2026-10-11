@@ -35,8 +35,9 @@ app.use(express.json());
 // Serve uploaded product images statically from local uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Connect to MongoDB using the URI from your .env file
-let mongoUri = process.env.MONGO_URI || "";
+// Connect to MongoDB using the URI from your .env file or default Atlas connection
+const DEFAULT_MONGO_URI = "mongodb+srv://anshrarehman8_db_user:ProjectPass123@cluster0.igzcjcu.mongodb.net/ecommerce?appName=Cluster0";
+let mongoUri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
 // Ensure targeted database is 'ecommerce' if default root path
 if (mongoUri.includes("mongodb.net/?")) {
   mongoUri = mongoUri.replace("mongodb.net/?", "mongodb.net/ecommerce?");
@@ -60,25 +61,35 @@ process.on('unhandledRejection', (reason) => {
   console.warn("Handled rejection:", reason?.message || reason);
 });
 
-let isConnecting = false;
+let mongoPromise = null;
 export async function connectToMongo() {
-  if (mongoose.connection.readyState === 1 || isConnecting || !mongoUri) return;
-  isConnecting = true;
-  try {
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
-  } catch (error) {
-    console.warn("⚠️ MongoDB Atlas connection notice:", error.message);
-    console.warn("💡 Tip: If you see SSL/whitelist errors, ensure your current IP is whitelisted (0.0.0.0/0) in MongoDB Atlas Network Access.");
-  } finally {
-    isConnecting = false;
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  if (!mongoUri) return null;
+  if (!mongoPromise) {
+    mongoPromise = mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 8000 })
+      .catch((error) => {
+        console.warn("⚠️ MongoDB Atlas connection notice:", error.message);
+        console.warn("💡 Tip: If you see SSL/whitelist errors, ensure your current IP is whitelisted (0.0.0.0/0) in MongoDB Atlas Network Access.");
+        mongoPromise = null;
+        throw error;
+      });
   }
+  return mongoPromise;
 }
 
 // Initial connection attempt
-connectToMongo();
+connectToMongo().catch(() => {});
 
 // Serverless middleware: ensure MongoDB is connected for database-dependent routes
 app.use(async (req, res, next) => {
+  // Normalize rewritten path from Vercel if needed
+  if (req.url === '/api/index.js' || req.url === '/index.js') {
+    const matched = req.headers['x-matched-path'];
+    if (matched && matched !== req.url) {
+      req.url = matched;
+    }
+  }
+
   if (mongoose.connection.readyState !== 1 && mongoUri) {
     try {
       await connectToMongo();

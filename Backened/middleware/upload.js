@@ -82,8 +82,8 @@ export const processUploadedImage = async (file, req) => {
     }
   }
 
-  // Fallback / Default: Serve locally from PC
-  const host = req.get('host') || 'localhost:3000';
-  const protocol = req.protocol || 'http';
+  // Fallback / Default: Serve from host / Vercel
+  const host = req.get('host') || 'mini-e-commerce-store-two.vercel.app';
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
   return `${protocol}://${host}/uploads/${file.filename}`;
 };
