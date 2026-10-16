@@ -455,10 +455,20 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                 <div className="product-detail-container">
                   <div className="detail-image-box">
                     {selectedProduct.imageUrl ? (
-                      <img src={selectedProduct.imageUrl} alt={selectedProduct.name} className="detail-product-img" />
-                    ) : (
+                      <img
+                        src={selectedProduct.imageUrl}
+                        alt={selectedProduct.name}
+                        className="detail-product-img"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          const fallback = e.target.nextElementSibling;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div style={{ display: selectedProduct.imageUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                       <Package size={64} color="#94a3b8" />
-                    )}
+                    </div>
                   </div>
                   <div className="detail-info">
                     <span className="category-tag">{selectedProduct.category}</span>

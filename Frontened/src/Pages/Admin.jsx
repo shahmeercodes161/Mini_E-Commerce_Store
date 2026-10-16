@@ -92,9 +92,36 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
         return;
       }
       setImageFile(file);
+
+      // Read & compress file via Canvas for lightweight, permanent storage in MongoDB
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          setImagePreview(compressedDataUrl);
+        };
+        img.onerror = () => {
+          setImagePreview(event.target.result);
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -113,7 +140,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
     setImagePreview('');
   };
 
-  // GUARANTEED PRODUCT CREATION / UPDATE WITH MULTER IMAGE UPLOAD
+  // GUARANTEED PRODUCT CREATION / UPDATE WITH PERMANENT STORAGE
   const handleSubmit = async (e) => {
     e.preventDefault();
     const priceNum = parseFloat(formData.price);
@@ -130,7 +157,7 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
 
     let finalImageUrl = formData.imageUrl.trim();
 
-    // 1. Upload file via Multer if selected
+    // 1. Upload file if selected
     if (imageFile) {
       if (API_BASE_URL) {
         setIsUploading(true);
@@ -145,12 +172,18 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
 
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
-            finalImageUrl = uploadData.imageUrl || imagePreview;
+            // If backend uploaded to Cloudinary or permanent base64, use it
+            if (uploadData.imageUrl && !uploadData.imageUrl.includes('/uploads/')) {
+              finalImageUrl = uploadData.imageUrl;
+            } else {
+              // On Vercel without Cloudinary, use client-compressed Base64 for permanent MongoDB storage
+              finalImageUrl = imagePreview || uploadData.imageUrl;
+            }
           } else {
             finalImageUrl = imagePreview;
           }
         } catch (err) {
-          console.warn("Backend image upload notice, using local preview data:", err);
+          console.warn("Backend image upload notice, using persistent preview data:", err);
           finalImageUrl = imagePreview;
         } finally {
           setIsUploading(false);

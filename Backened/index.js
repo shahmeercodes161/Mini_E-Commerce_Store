@@ -25,8 +25,9 @@ const app = express();
 app.use(cors());
 const PORT = process.env.PORT || 3000;
 
-// Middleware to read JSON bodies sent from frontend
-app.use(express.json());
+// Middleware to read JSON bodies sent from frontend (supports base64 product images)
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Uploads directory configuration (safely handles Vercel /tmp or local uploads)
 const uploadsDir = process.env.VERCEL

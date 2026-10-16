@@ -77,23 +77,39 @@ export const upload = multer({
 export const processUploadedImage = async (file, req) => {
   if (!file) return '';
 
-  // If Cloudinary credentials exist, upload to Cloudinary CDN
+  // 1. If Cloudinary credentials exist, upload to Cloudinary CDN
   if (hasCloudinary) {
     try {
       const result = await cloudinary.uploader.upload(file.path, {
         folder: 'doorstep_products',
         resource_type: 'image'
       });
-      // Optionally clean up local temp file after cloud upload
       try { fs.unlinkSync(file.path); } catch { /* ignore */ }
       return result.secure_url;
     } catch (cloudError) {
-      console.warn('⚠️ Cloudinary upload error, falling back to local file:', cloudError.message);
+      console.warn('⚠️ Cloudinary upload error, falling back:', cloudError.message);
     }
   }
 
-  // Fallback / Default: Serve from host / Vercel
-  const host = req.get('host') || 'mini-e-commerce-store-xqv2.vercel.app';
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  // 2. On Vercel serverless environment: Convert to permanent Base64 Data URL.
+  // Vercel's /tmp filesystem is wiped whenever a serverless lambda sleeps or recycles.
+  // Storing the image directly as a Base64 string in MongoDB ensures it NEVER breaks or 404s!
+  if (process.env.VERCEL) {
+    try {
+      if (fs.existsSync(file.path)) {
+        const fileBuffer = fs.readFileSync(file.path);
+        const mimeType = file.mimetype || 'image/jpeg';
+        const base64Data = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+        try { fs.unlinkSync(file.path); } catch {}
+        return base64Data;
+      }
+    } catch (err) {
+      console.warn('Notice converting uploaded image to base64 on Vercel:', err.message);
+    }
+  }
+
+  // 3. Fallback for standalone local node development
+  const host = req.get('host') || 'localhost:3000';
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   return `${protocol}://${host}/uploads/${file.filename}`;
 };
