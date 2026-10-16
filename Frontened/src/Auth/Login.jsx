@@ -98,7 +98,7 @@ export default function Login({ initialEmail = '', onLoginSuccess, onSwitchToSig
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@example.com"
+            placeholder="Enter your email address"
             icon={<Mail size={18} />}
           />
 
@@ -107,7 +107,7 @@ export default function Login({ initialEmail = '', onLoginSuccess, onSwitchToSig
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="Enter your password"
             icon={<Lock size={18} />}
           />
 

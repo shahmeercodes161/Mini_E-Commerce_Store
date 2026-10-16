@@ -110,7 +110,7 @@ export default function AdminLogin({ onAdminLoginSuccess, onSwitchToCustomerLogi
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="Enter admin password"
             icon={<Lock size={18} />}
           />
 

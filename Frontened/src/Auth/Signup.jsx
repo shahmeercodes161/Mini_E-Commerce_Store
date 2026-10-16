@@ -114,7 +114,7 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Muhammad Shahmir"
+            placeholder="Enter your full name"
             icon={<User size={18} />}
           />
 
@@ -123,7 +123,7 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@example.com"
+            placeholder="Enter your email address"
             icon={<Mail size={18} />}
           />
 
@@ -132,7 +132,7 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="Create a password (min. 6 characters)"
             icon={<Lock size={18} />}
           />
 
