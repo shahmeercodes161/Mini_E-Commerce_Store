@@ -886,19 +886,19 @@ body {
   gap: 12px;
 }
 
-.form-group {
+.checkout-fields .form-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.form-group label {
+.checkout-fields .form-group label {
   font-size: 12px;
   font-weight: 600;
   color: #475569;
 }
 
-.form-group input {
+.checkout-fields .form-group input {
   padding: 9px 11px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
@@ -909,7 +909,7 @@ body {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus {
+.checkout-fields .form-group input:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }

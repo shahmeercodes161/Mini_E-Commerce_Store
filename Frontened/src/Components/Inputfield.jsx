@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import './Inputfield.css';
 
 export default function InputField({ label, type = 'text', value, onChange, placeholder, icon, required = true }) {
   const [showPassword, setShowPassword] = useState(false);

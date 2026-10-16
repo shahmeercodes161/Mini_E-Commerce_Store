@@ -83,7 +83,7 @@
 .input-wrapper input {
   width: 100%;
   height: 48px;
-  padding: 0 14px 0 44px;
+  padding: 0 14px 0 46px !important;
   border: 1.5px solid #cbd5e1;
   border-radius: 10px;
   outline: none;
@@ -93,14 +93,15 @@
   font-family: inherit;
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  line-height: normal;
 }
 
 .input-wrapper:not(.has-icon) input {
-  padding-left: 14px;
+  padding-left: 14px !important;
 }
 
 .input-wrapper.has-toggle input {
-  padding-right: 44px;
+  padding-right: 46px !important;
 }
 
 .input-wrapper input:hover {
