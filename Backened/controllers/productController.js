@@ -1,10 +1,19 @@
 import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import { processUploadedImage } from '../middleware/upload.js';
-import { INITIAL_PRODUCTS } from '../seedProducts.js';
+import { INITIAL_PRODUCTS, seedInitialData } from '../seedProducts.js';
+import { connectToMongo } from '../db/connect.js';
 
-// In-memory cache for admin creations while DB is connecting
-let pendingProducts = [];
+// Helper to ensure MongoDB is ready before database operations
+const ensureDb = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectToMongo();
+    } catch (err) {
+      console.warn('Notice ensuring MongoDB in productController:', err.message);
+    }
+  }
+};
 
 // 1. Get all products (with search & category filtering)
 export const getAllProducts = async (req, res) => {
@@ -20,13 +29,21 @@ export const getAllProducts = async (req, res) => {
       query.name = { $regex: search, $options: 'i' };
     }
 
+    await ensureDb();
+
     if (mongoose.connection.readyState === 1) {
       const dbProducts = await Product.find(query).sort({ createdAt: -1 });
-      return res.status(200).json(dbProducts);
+      if (dbProducts.length > 0) {
+        return res.status(200).json(dbProducts);
+      }
+      // If DB has 0 products, seed defaults automatically
+      await seedInitialData();
+      const seeded = await Product.find(query).sort({ createdAt: -1 });
+      return res.status(200).json(seeded);
     }
 
-    // Graceful response while Atlas connection handshake or IP whitelist is in progress
-    let fallback = [...pendingProducts, ...INITIAL_PRODUCTS.map((p, idx) => ({ _id: `seed-${idx + 1}`, ...p }))];
+    // Fallback response if database connection is unreachable
+    let fallback = [...INITIAL_PRODUCTS.map((p, idx) => ({ _id: `seed-${idx + 1}`, ...p }))];
     if (category && category !== 'All') {
       fallback = fallback.filter(p => p.category === category);
     }
@@ -42,6 +59,7 @@ export const getAllProducts = async (req, res) => {
 // 2. Get a single product detail by ID
 export const getProductById = async (req, res) => {
   try {
+    await ensureDb();
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
@@ -52,7 +70,7 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// 3. Upload product image via Multer (Saves on PC or Cloudinary)
+// 3. Upload product image via Multer (Saves to Cloudinary or static folder)
 export const uploadProductImage = async (req, res) => {
   try {
     if (!req.file) {
@@ -70,7 +88,7 @@ export const uploadProductImage = async (req, res) => {
   }
 };
 
-// 4. Admin View: Add a new product (supports JSON or multipart upload)
+// 4. Admin View: Add a new product (Stored permanently in MongoDB)
 export const createProduct = async (req, res) => {
   try {
     let { name, category, price, stockQuantity, imageUrl } = req.body;
@@ -80,10 +98,12 @@ export const createProduct = async (req, res) => {
       imageUrl = await processUploadedImage(req.file, req);
     }
 
+    await ensureDb();
+
     if (mongoose.connection.readyState === 1) {
       const newProduct = new Product({
-        name,
-        category,
+        name: name.trim(),
+        category: category || 'Accessories',
         price: Number(price),
         stockQuantity: Number(stockQuantity),
         imageUrl: imageUrl || ""
@@ -92,18 +112,9 @@ export const createProduct = async (req, res) => {
       return res.status(201).json(newProduct);
     }
 
-    // Temporary memory storage until Atlas IP whitelist is active
-    const tempProduct = {
-      _id: 'custom-' + Date.now(),
-      name,
-      category,
-      price: Number(price),
-      stockQuantity: Number(stockQuantity),
-      imageUrl: imageUrl || "",
-      createdAt: new Date().toISOString()
-    };
-    pendingProducts.unshift(tempProduct);
-    res.status(201).json(tempProduct);
+    return res.status(503).json({
+      message: 'Database is currently connecting. Please retry in a moment.'
+    });
   } catch (error) {
     res.status(400).json({ message: 'Failed to create product', error: error.message });
   }
@@ -119,25 +130,17 @@ export const updateProduct = async (req, res) => {
     if (updateData.price) updateData.price = Number(updateData.price);
     if (updateData.stockQuantity) updateData.stockQuantity = Number(updateData.stockQuantity);
 
-    if (mongoose.connection.readyState === 1) {
-      const updatedProduct = await Product.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        { new: true, runValidators: true }
-      );
-      if (!updatedProduct) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
-      return res.status(200).json(updatedProduct);
-    }
+    await ensureDb();
 
-    // In-memory fallback
-    const idx = pendingProducts.findIndex(p => p._id === req.params.id);
-    if (idx !== -1) {
-      pendingProducts[idx] = { ...pendingProducts[idx], ...updateData };
-      return res.status(200).json(pendingProducts[idx]);
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    if (!updatedProduct) {
+      return res.status(404).json({ message: 'Product not found' });
     }
-    res.status(200).json({ _id: req.params.id, ...updateData });
+    return res.status(200).json(updatedProduct);
   } catch (error) {
     res.status(400).json({ message: 'Failed to update product', error: error.message });
   }
@@ -146,16 +149,13 @@ export const updateProduct = async (req, res) => {
 // 6. Admin View: Delete a product
 export const deleteProduct = async (req, res) => {
   try {
-    if (mongoose.connection.readyState === 1) {
-      const deletedProduct = await Product.findByIdAndDelete(req.params.id);
-      if (!deletedProduct) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
-      return res.status(200).json({ message: 'Product deleted successfully', id: req.params.id });
-    }
+    await ensureDb();
 
-    pendingProducts = pendingProducts.filter(p => p._id !== req.params.id);
-    res.status(200).json({ message: 'Product deleted successfully', id: req.params.id });
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    if (!deletedProduct) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    return res.status(200).json({ message: 'Product deleted successfully', id: req.params.id });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete product', error: error.message });
   }

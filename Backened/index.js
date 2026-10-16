@@ -12,18 +12,14 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import { seedInitialData } from "./seedProducts.js";
 import { syncPendingUsers } from "./controllers/authController.js";
 
+import { connectToMongo, getMongoUri } from "./db/connect.js";
+import os from "os";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables from your .env file
 dotenv.config();
-
-// Set public DNS servers for Node.js SRV resolution on Windows if default resolver blocks it
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch {
-  // Ignore if dns.setServers is restricted
-}
 
 const app = express();
 app.use(cors());
@@ -32,20 +28,15 @@ const PORT = process.env.PORT || 3000;
 // Middleware to read JSON bodies sent from frontend
 app.use(express.json());
 
-// Serve uploaded product images statically from local uploads folder
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Uploads directory configuration (safely handles Vercel /tmp or local uploads)
+const uploadsDir = process.env.VERCEL
+  ? path.join(os.tmpdir(), "uploads")
+  : path.join(__dirname, "uploads");
 
-// Connect to MongoDB using the URI from your .env file or default Atlas connection
-const DEFAULT_MONGO_URI = "mongodb+srv://anshrarehman8_db_user:ProjectPass123@cluster0.igzcjcu.mongodb.net/ecommerce?appName=Cluster0";
-let mongoUri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
-// Ensure targeted database is 'ecommerce' if default root path
-if (mongoUri.includes("mongodb.net/?")) {
-  mongoUri = mongoUri.replace("mongodb.net/?", "mongodb.net/ecommerce?");
-} else if (mongoUri.endsWith("mongodb.net/")) {
-  mongoUri = mongoUri + "ecommerce";
-}
+app.use("/uploads", express.static(uploadsDir));
 
-mongoose.set('bufferCommands', false);
+// Re-export connectToMongo for serverless entry points
+export { connectToMongo };
 
 mongoose.connection.on('error', (err) => {
   console.warn("MongoDB connection event notice:", err.message);
@@ -61,22 +52,6 @@ process.on('unhandledRejection', (reason) => {
   console.warn("Handled rejection:", reason?.message || reason);
 });
 
-let mongoPromise = null;
-export async function connectToMongo() {
-  if (mongoose.connection.readyState === 1) return mongoose.connection;
-  if (!mongoUri) return null;
-  if (!mongoPromise) {
-    mongoPromise = mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 8000 })
-      .catch((error) => {
-        console.warn("⚠️ MongoDB Atlas connection notice:", error.message);
-        console.warn("💡 Tip: If you see SSL/whitelist errors, ensure your current IP is whitelisted (0.0.0.0/0) in MongoDB Atlas Network Access.");
-        mongoPromise = null;
-        throw error;
-      });
-  }
-  return mongoPromise;
-}
-
 // Initial connection attempt
 connectToMongo().catch(() => {});
 
@@ -90,10 +65,17 @@ app.use(async (req, res, next) => {
     }
   }
 
-  if (mongoose.connection.readyState !== 1 && mongoUri) {
+  // Health check can proceed without waiting for database
+  if (req.url === '/api/health' || req.url === '/health') {
+    return next();
+  }
+
+  if (mongoose.connection.readyState !== 1) {
     try {
       await connectToMongo();
-    } catch {}
+    } catch (err) {
+      console.warn("Database connection notice in middleware:", err.message);
+    }
   }
   next();
 });

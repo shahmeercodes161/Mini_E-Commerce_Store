@@ -35,31 +35,33 @@ export default function Login({ initialEmail = '', onLoginSuccess, onSwitchToSig
             body: JSON.stringify({ email: trimmedEmail, password })
           });
 
-          const data = await res.json();
+          const contentType = res.headers.get('content-type') || '';
+          let data = null;
+          if (contentType.includes('application/json')) {
+            data = await res.json();
+          }
 
-          if (res.ok && data.user) {
+          if (res.ok && data?.user) {
             loggedInUser = data.user;
-          } else if (res.status === 401) {
-            setErrorMessage(data.message || 'Invalid credentials. Please check your email and password.');
+          } else if (res.status === 401 || res.status === 400) {
+            setErrorMessage(data?.message || 'Invalid credentials. Please check your email and password.');
+            setIsLoading(false);
+            return;
+          } else {
+            setErrorMessage(data?.message || `Server responded with status ${res.status}. Sign in failed.`);
             setIsLoading(false);
             return;
           }
         } catch (apiErr) {
-          console.warn('Backend offline notice during login, checking local store:', apiErr);
-        }
-      }
-
-      // 2. Fallback to Local Storage if backend was offline
-      if (!loggedInUser) {
-        const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
-        const foundLocal = existingUsers.find(
-          (u) => u.email.toLowerCase() === trimmedEmail && u.password === password
-        );
-
-        if (trimmedEmail === 'admin@doorstep.com' && password === 'admin123') {
-          loggedInUser = { name: 'Master Admin', email: 'admin@doorstep.com', role: 'admin' };
-        } else if (foundLocal) {
-          loggedInUser = foundLocal;
+          console.warn('Backend connection notice during login:', apiErr);
+          // If master admin quick login offline
+          if (trimmedEmail === 'admin@doorstep.com' && password === 'admin123') {
+            loggedInUser = { name: 'Master Admin', email: 'admin@doorstep.com', role: 'admin' };
+          } else {
+            setErrorMessage(`Could not reach authentication server (${apiErr.message}). Check connection to ${API_BASE_URL}`);
+            setIsLoading(false);
+            return;
+          }
         }
       }
 
@@ -69,7 +71,7 @@ export default function Login({ initialEmail = '', onLoginSuccess, onSwitchToSig
           onLoginSuccess(loggedInUser);
         }
       } else {
-        setErrorMessage('Invalid customer credentials. Please check your email/password or create an account.');
+        setErrorMessage('Invalid customer credentials. Please check your email and password.');
       }
     } finally {
       setIsLoading(false);

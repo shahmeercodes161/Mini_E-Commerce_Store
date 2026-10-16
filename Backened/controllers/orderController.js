@@ -1,5 +1,18 @@
+import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import { connectToMongo } from '../db/connect.js';
+
+// Helper to ensure MongoDB is ready
+const ensureDb = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectToMongo();
+    } catch (err) {
+      console.warn('Notice ensuring MongoDB in orderController:', err.message);
+    }
+  }
+};
 
 // 1. Process Checkout (Verify stock, calculate total, deduct inventory, save order)
 export const checkout = async (req, res) => {
@@ -9,6 +22,8 @@ export const checkout = async (req, res) => {
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: "Your shopping cart is empty" });
     }
+
+    await ensureDb();
 
     let subtotal = 0;
     const finalOrderItems = [];
@@ -68,6 +83,7 @@ export const checkout = async (req, res) => {
 // 2. View Order History
 export const getOrderHistory = async (req, res) => {
   try {
+    await ensureDb();
     const orders = await Order.find().populate('items.product').sort({ createdAt: -1 });
     res.status(200).json(orders);
   } catch (error) {

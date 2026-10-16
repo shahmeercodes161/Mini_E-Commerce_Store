@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import { connectToMongo } from '../db/connect.js';
 
 let pendingUsers = [];
 
-// Sync any users registered while DB was connecting
+// Helper: Sync any legacy pending users if any existed
 export const syncPendingUsers = async () => {
   if (mongoose.connection.readyState !== 1 || pendingUsers.length === 0) return;
   try {
@@ -20,7 +21,7 @@ export const syncPendingUsers = async () => {
   }
 };
 
-// 1. User Registration (Stores customer in MongoDB)
+// 1. User Registration (Guaranteed storage in MongoDB)
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -31,60 +32,41 @@ export const register = async (req, res) => {
 
     const trimmedEmail = email.trim().toLowerCase();
 
-    if (mongoose.connection.readyState === 1) {
-      const existingUser = await User.findOne({ email: trimmedEmail });
-      if (existingUser) {
-        return res.status(409).json({ message: 'An account with this email address already exists. Please sign in.' });
+    // Ensure database connection is active
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        await connectToMongo();
+      } catch (connErr) {
+        console.error('Database connection error in register:', connErr.message);
+        return res.status(503).json({
+          message: 'Database is currently unavailable. Please try again in a few moments.'
+        });
       }
-
-      const role = trimmedEmail === 'admin@doorstep.com' ? 'admin' : 'customer';
-      const newUser = new User({
-        name: name.trim(),
-        email: trimmedEmail,
-        password: password,
-        role
-      });
-      await newUser.save();
-
-      return res.status(201).json({
-        success: true,
-        message: 'Account registered successfully in database',
-        user: {
-          _id: newUser._id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-          createdAt: newUser.createdAt
-        }
-      });
     }
 
-    // Temporary memory buffer until Atlas IP whitelist is active
-    const duplicate = pendingUsers.find(u => u.email === trimmedEmail);
-    if (duplicate) {
+    const existingUser = await User.findOne({ email: trimmedEmail });
+    if (existingUser) {
       return res.status(409).json({ message: 'An account with this email address already exists. Please sign in.' });
     }
 
     const role = trimmedEmail === 'admin@doorstep.com' ? 'admin' : 'customer';
-    const tempUser = {
-      _id: 'usr-' + Date.now(),
+    const newUser = new User({
       name: name.trim(),
       email: trimmedEmail,
       password: password,
-      role,
-      createdAt: new Date().toISOString()
-    };
-    pendingUsers.push(tempUser);
+      role
+    });
+    await newUser.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Account registered successfully',
+      message: 'Account registered successfully in database',
       user: {
-        _id: tempUser._id,
-        name: tempUser.name,
-        email: tempUser.email,
-        role: tempUser.role,
-        createdAt: tempUser.createdAt
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        createdAt: newUser.createdAt
       }
     });
   } catch (error) {
@@ -93,7 +75,7 @@ export const register = async (req, res) => {
   }
 };
 
-// 2. User Sign In (Validates against MongoDB)
+// 2. User Sign In (Validates directly against MongoDB)
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -103,6 +85,15 @@ export const login = async (req, res) => {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
+
+    // Ensure database connection is active
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        await connectToMongo();
+      } catch (connErr) {
+        console.warn('Database connection notice in login:', connErr.message);
+      }
+    }
 
     // Check for Master Admin built-in login
     if (trimmedEmail === 'admin@doorstep.com' && password === 'admin123') {
@@ -135,7 +126,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Look up user in database if connected
     if (mongoose.connection.readyState === 1) {
       const user = await User.findOne({ email: trimmedEmail, password: password });
 
@@ -156,22 +146,8 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check pending users buffer if DB handshake is pending
-    const tempUser = pendingUsers.find(u => u.email === trimmedEmail && u.password === password);
-    if (!tempUser) {
-      return res.status(401).json({ message: 'Invalid credentials. Please check your email and password or create an account.' });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Logged in successfully',
-      user: {
-        _id: tempUser._id,
-        name: tempUser.name,
-        email: tempUser.email,
-        role: tempUser.role,
-        createdAt: tempUser.createdAt
-      }
+    return res.status(503).json({
+      message: 'Database connection in progress. Please retry in a few seconds.'
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -179,12 +155,11 @@ export const login = async (req, res) => {
   }
 };
 
-// 3. Get all registered users (For admin audit/inspection)
+// 3. Get all registered users (For admin inspection)
 export const getAllUsers = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
-      const sanitizedPending = pendingUsers.map(({ password, ...rest }) => rest);
-      return res.status(200).json(sanitizedPending);
+      await connectToMongo();
     }
     const users = await User.find({}, '-password').sort({ createdAt: -1 });
     res.status(200).json(users);

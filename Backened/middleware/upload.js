@@ -4,13 +4,23 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { v2 as cloudinary } from 'cloudinary';
 
+import os from 'os';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.join(__dirname, '..', 'uploads');
 
-// Ensure uploads directory exists on local PC
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// In Vercel serverless environment, the filesystem is read-only except /tmp
+const uploadsDir = process.env.VERCEL
+  ? path.join(os.tmpdir(), 'uploads')
+  : path.join(__dirname, '..', 'uploads');
+
+// Ensure uploads directory exists safely
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Notice ensuring uploads directory:', err.message);
 }
 
 // Check if Cloudinary is configured via environment variables
@@ -83,7 +93,7 @@ export const processUploadedImage = async (file, req) => {
   }
 
   // Fallback / Default: Serve from host / Vercel
-  const host = req.get('host') || 'mini-e-commerce-store-two.vercel.app';
+  const host = req.get('host') || 'mini-e-commerce-store-xqv2.vercel.app';
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
   return `${protocol}://${host}/uploads/${file.filename}`;
 };

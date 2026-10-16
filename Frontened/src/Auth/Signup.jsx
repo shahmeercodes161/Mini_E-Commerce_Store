@@ -40,28 +40,35 @@ export default function Signupform({ onSignupSuccess, onSwitchToLogin }) {
             })
           });
 
-          const data = await res.json();
+          const contentType = res.headers.get('content-type') || '';
+          let data = null;
+          if (contentType.includes('application/json')) {
+            data = await res.json();
+          }
 
           if (!res.ok) {
-            setErrorMessage(data.message || 'Registration failed. Please check your information.');
+            setErrorMessage(data?.message || `Registration failed (Server responded with status ${res.status}).`);
             setIsSubmitting(false);
             return;
           }
 
-          registeredUser = data.user;
+          registeredUser = data?.user;
         } catch (apiErr) {
-          console.warn('Backend API connection notice, falling back locally:', apiErr);
+          console.error('Backend API connection error:', apiErr);
+          setErrorMessage(`Could not reach backend database (${apiErr.message}). Please verify connection to ${API_BASE_URL}`);
+          setIsSubmitting(false);
+          return;
         }
       }
 
-      // 2. Prepare user object
-      const newUser = registeredUser || { 
-        _id: 'local-' + Date.now(), 
-        name: name.trim(), 
-        email: trimmedEmail, 
-        password, 
-        role: 'customer' 
-      };
+      if (!registeredUser) {
+        setErrorMessage('Failed to register account in MongoDB database.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Prepare user object from database response
+      const newUser = registeredUser;
 
       // 3. Update local backup
       const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
