@@ -3,12 +3,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/api",
-      "destination": "https://mini-e-commerce-store-xqv2.vercel.app/api"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "https://mini-e-commerce-store-xqv2.vercel.app/api/$1"
+    },
+    {
+      "source": "/api",
+      "destination": "https://mini-e-commerce-store-xqv2.vercel.app/api"
     },
     {
       "source": "/((?!api).*)",
