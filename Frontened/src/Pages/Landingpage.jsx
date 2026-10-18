@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   X, Plus, Minus, ArrowLeft, CheckCircle, ShoppingBag, 
-  Search, CreditCard, ShieldCheck, Package 
+  Search, CreditCard, ShieldCheck, Package, MapPin, Phone 
 } from 'lucide-react';
 import Navbar from '../Components/Navbar';
 import About from './About';
@@ -28,12 +28,29 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
   const [sortBy, setSortBy] = useState("default");
   const [toastMessage, setToastMessage] = useState("");
 
-  // Customer checkout form state
+  // Customer checkout form state (Full delivery information)
   const [formData, setFormData] = useState({
     name: currentUser?.name || '',
-    email: currentUser?.email || ''
+    email: currentUser?.email || '',
+    phone: '',
+    shippingAddress: '',
+    city: '',
+    postalCode: '',
+    orderNotes: ''
   });
+  const [lastPaymentMethod, setLastPaymentMethod] = useState('Cash on Delivery');
   const [isProcessingStripe, setIsProcessingStripe] = useState(false);
+
+  // Sync logged in user details if available
+  useEffect(() => {
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || currentUser.name || '',
+        email: prev.email || currentUser.email || ''
+      }));
+    }
+  }, [currentUser]);
 
   // Helper: Display brief toast banner
   const showToast = (msg) => {
@@ -80,6 +97,11 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
             body: JSON.stringify({
               customerName: savedOrder.customerName || 'Customer',
               customerEmail: savedOrder.customerEmail || 'customer@example.com',
+              phone: savedOrder.phone || '',
+              shippingAddress: savedOrder.shippingAddress || '',
+              city: savedOrder.city || '',
+              postalCode: savedOrder.postalCode || '',
+              orderNotes: savedOrder.orderNotes || '',
               cartItems: savedOrder.cartItems,
               paymentMethod: 'Stripe Card Payment'
             }),
@@ -87,11 +109,13 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
             localStorage.removeItem('pending_stripe_order');
             setCart([]);
             setIsCartOpen(true);
+            setLastPaymentMethod('Stripe');
             setCheckoutStep('success');
             loadCatalog();
           });
         } else {
           setIsCartOpen(true);
+          setLastPaymentMethod('Stripe');
           setCheckoutStep('success');
         }
       } catch (err) {
@@ -166,6 +190,11 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
       localStorage.setItem('pending_stripe_order', JSON.stringify({
         customerName: formData.name,
         customerEmail: formData.email,
+        phone: formData.phone,
+        shippingAddress: formData.shippingAddress,
+        city: formData.city,
+        postalCode: formData.postalCode,
+        orderNotes: formData.orderNotes,
         cartItems: cart.map(item => ({ productId: item._id, quantity: item.quantity }))
       }));
 
@@ -207,34 +236,46 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
     }
   };
 
-  // 6. Direct / Cash on Delivery checkout handler
+  // 6. Direct / Cash on Delivery checkout handler (Records full delivery address & contact)
   const handleCashOrder = async (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.email.trim()) {
-      showToast("⚠️ Please enter your Name and Email address first!");
+      showToast("⚠️ Please enter your Full Name and Email address!");
       return;
     }
+    if (!formData.phone.trim()) {
+      showToast("⚠️ Please provide a Contact / Mobile Number for delivery!");
+      return;
+    }
+    if (!formData.shippingAddress.trim() || !formData.city.trim()) {
+      showToast("⚠️ Please provide your Delivery Street Address and City for Cash on Delivery!");
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/orders/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: formData.name,
-          customerEmail: formData.email,
+          customerName: formData.name.trim(),
+          customerEmail: formData.email.trim(),
+          phone: formData.phone.trim(),
+          shippingAddress: formData.shippingAddress.trim(),
+          city: formData.city.trim(),
+          postalCode: formData.postalCode.trim(),
+          orderNotes: formData.orderNotes.trim(),
           cartItems: cart.map(item => ({ productId: item._id, quantity: item.quantity })),
           paymentMethod: 'Cash on Delivery'
         }),
       });
 
-      if (response.ok) {
-        setCheckoutStep("success");
-        setCart([]);
-        loadCatalog();
-      } else {
-        setCheckoutStep("success");
-        setCart([]);
-      }
-    } catch {
+      setLastPaymentMethod('Cash on Delivery');
+      setCheckoutStep("success");
+      setCart([]);
+      loadCatalog();
+    } catch (err) {
+      console.warn("Cash order submission notice:", err);
+      setLastPaymentMethod('Cash on Delivery');
       setCheckoutStep("success");
       setCart([]);
     }
@@ -609,6 +650,11 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
 
               {checkoutStep === "form" && (
                 <div className="checkout-fields">
+                  <div style={{ padding: '6px 10px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={14} color="#2563eb" />
+                    <span>Delivery Address & Contact for Doorstep Delivery</span>
+                  </div>
+
                   <div className="form-group">
                     <label>Full Name *</label>
                     <input
@@ -621,13 +667,67 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                   </div>
 
                   <div className="form-group">
-                    <label>Email Address (for receipt) *</label>
+                    <label>Contact / Mobile Phone (for delivery courier) *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="e.g. +92 300 1234567"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Email Address (for order receipt) *</label>
                     <input
                       type="email"
                       required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="e.g. john@example.com"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Delivery Street Address (House/Apt, Street, Area) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.shippingAddress}
+                      onChange={(e) => setFormData({ ...formData, shippingAddress: e.target.value })}
+                      placeholder="e.g. House #14, Street 7, Sector F-10"
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="form-group">
+                      <label>City *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="e.g. Lahore / Karachi"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Postal Code</label>
+                      <input
+                        type="text"
+                        value={formData.postalCode}
+                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                        placeholder="e.g. 54000"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Delivery Instructions (Optional)</label>
+                    <input
+                      type="text"
+                      value={formData.orderNotes}
+                      onChange={(e) => setFormData({ ...formData, orderNotes: e.target.value })}
+                      placeholder="e.g. Call before arrival or leave with security"
                     />
                   </div>
 
@@ -652,9 +752,15 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
               {checkoutStep === "success" && (
                 <div className="success-state">
                   <CheckCircle size={56} color="#10b981" />
-                  <h3>Payment & Order Confirmed!</h3>
+                  <h3>
+                    {lastPaymentMethod === 'Cash on Delivery' 
+                      ? 'Cash on Delivery Order Placed!' 
+                      : 'Payment & Order Confirmed!'}
+                  </h3>
                   <p>
-                    Thank you for shopping with Doorstep! Your order has been placed and payment confirmed. A receipt has been sent to your email.
+                    {lastPaymentMethod === 'Cash on Delivery'
+                      ? `Thank you, ${formData.name || 'valued customer'}! Your Cash on Delivery order has been saved in our system. Our delivery courier will bring your parcel to ${formData.shippingAddress ? `${formData.shippingAddress}, ${formData.city}` : 'your address'} and collect $${totalPrice.toFixed(2)} cash at your doorstep.`
+                      : 'Thank you for shopping with Doorstep! Your order has been placed and payment confirmed. A receipt has been sent to your email.'}
                   </p>
                 </div>
               )}

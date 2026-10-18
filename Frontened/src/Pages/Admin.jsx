@@ -698,8 +698,8 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Customer</th>
-                <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Email Address</th>
+                <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Customer & Contact</th>
+                <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Delivery Street Address</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Items Ordered</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Total Amount</th>
                 <th style={{ padding: '14px 18px', fontWeight: '600', fontSize: '13px', color: '#475569' }}>Payment Method</th>
@@ -710,8 +710,32 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
               {orders && orders.length > 0 ? (
                 orders.map((order) => (
                   <tr key={order._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 18px', fontWeight: '600', color: '#0f172a' }}>{order.customerName || 'Anonymous'}</td>
-                    <td style={{ padding: '14px 18px', color: '#64748b' }}>{order.customerEmail || 'N/A'}</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <div style={{ fontWeight: '700', color: '#0f172a' }}>{order.customerName || 'Customer'}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>{order.customerEmail || 'N/A'}</div>
+                      {order.phone && (
+                        <div style={{ fontSize: '12px', color: '#2563eb', fontWeight: '600', marginTop: '3px' }}>
+                          📞 {order.phone}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 18px', fontSize: '13px', color: '#334155', maxWidth: '220px' }}>
+                      {order.shippingAddress ? (
+                        <div>
+                          <div style={{ fontWeight: '500' }}>{order.shippingAddress}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>
+                            {order.city} {order.postalCode ? `• ${order.postalCode}` : ''}
+                          </div>
+                          {order.orderNotes && (
+                            <div style={{ fontSize: '11px', color: '#d97706', marginTop: '3px', fontStyle: 'italic', background: '#fffbeb', padding: '2px 6px', borderRadius: '4px' }}>
+                              Note: {order.orderNotes}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Standard Delivery</span>
+                      )}
+                    </td>
                     <td style={{ padding: '14px 18px' }}>
                       {order.items && order.items.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
@@ -738,11 +762,11 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                         fontWeight: '600', 
                         padding: '4px 8px', 
                         borderRadius: '4px',
-                        background: (order.paymentMethod || 'Stripe').includes('Stripe') ? '#f5f3ff' : '#f8fafc',
-                        color: (order.paymentMethod || 'Stripe').includes('Stripe') ? '#635bff' : '#475569',
-                        border: (order.paymentMethod || 'Stripe').includes('Stripe') ? '1px solid #ddd6fe' : '1px solid #e2e8f0'
+                        background: (order.paymentMethod || '').includes('Cash') ? '#ecfdf5' : '#f5f3ff',
+                        color: (order.paymentMethod || '').includes('Cash') ? '#059669' : '#635bff',
+                        border: (order.paymentMethod || '').includes('Cash') ? '1px solid #a7f3d0' : '1px solid #ddd6fe'
                       }}>
-                        {order.paymentMethod || 'Stripe'}
+                        {order.paymentMethod || 'Cash on Delivery'}
                       </span>
                     </td>
                     <td style={{ padding: '14px 18px' }}>
@@ -751,10 +775,11 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                         fontWeight: '700', 
                         padding: '4px 8px', 
                         borderRadius: '4px',
-                        background: order.status === 'Completed' ? '#ecfdf5' : '#eff6ff',
-                        color: order.status === 'Completed' ? '#059669' : '#2563eb'
+                        background: order.status === 'Completed' ? '#ecfdf5' : '#fffbeb',
+                        color: order.status === 'Completed' ? '#059669' : '#d97706',
+                        border: order.status === 'Completed' ? '1px solid #a7f3d0' : '1px solid #fde68a'
                       }}>
-                        {order.status || 'Processed'}
+                        {order.status || 'Pending'}
                       </span>
                     </td>
                   </tr>

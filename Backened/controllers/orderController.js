@@ -17,7 +17,17 @@ const ensureDb = async () => {
 // 1. Process Checkout (Verify stock, calculate total, deduct inventory, save order)
 export const checkout = async (req, res) => {
   try {
-    const { customerName, customerEmail, cartItems, paymentMethod } = req.body;
+    const { 
+      customerName, 
+      customerEmail, 
+      phone, 
+      shippingAddress, 
+      city, 
+      postalCode, 
+      orderNotes, 
+      cartItems, 
+      paymentMethod 
+    } = req.body;
 
     if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: "Your shopping cart is empty" });
@@ -61,15 +71,22 @@ export const checkout = async (req, res) => {
     const tax = subtotal * 0.08;
     const total = parseFloat((subtotal + tax).toFixed(2)); 
 
-    // Create and save unique order record
+    const isCod = paymentMethod === 'Cash on Delivery';
+
+    // Create and save unique order record with complete shipping and contact info
     const newOrder = new Order({
-      customerName,
-      customerEmail,
+      customerName: (customerName || 'Customer').trim(),
+      customerEmail: (customerEmail || '').trim().toLowerCase(),
+      phone: (phone || '').trim(),
+      shippingAddress: (shippingAddress || '').trim(),
+      city: (city || '').trim(),
+      postalCode: (postalCode || '').trim(),
+      orderNotes: (orderNotes || '').trim(),
       items: finalOrderItems,
       subtotal: parseFloat(subtotal.toFixed(2)),
       total,
-      status: 'Completed',
-      paymentMethod: paymentMethod || 'Stripe'
+      status: isCod ? 'Pending' : 'Completed',
+      paymentMethod: paymentMethod || 'Cash on Delivery'
     });
 
     await newOrder.save();

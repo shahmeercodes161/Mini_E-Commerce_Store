@@ -26,6 +26,26 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  phone: {
+    type: String,
+    default: ''
+  },
+  shippingAddress: {
+    type: String,
+    default: ''
+  },
+  city: {
+    type: String,
+    default: ''
+  },
+  postalCode: {
+    type: String,
+    default: ''
+  },
+  orderNotes: {
+    type: String,
+    default: ''
+  },
   items: [orderItemSchema],
   subtotal: {
     type: Number,
@@ -37,12 +57,12 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'Completed'],
-    default: 'Completed'
+    enum: ['Pending', 'Completed', 'Processing', 'Cancelled'],
+    default: 'Pending'
   },
   paymentMethod: {
     type: String,
-    default: 'Stripe'
+    default: 'Cash on Delivery'
   }
 }, { timestamps: true });
 
