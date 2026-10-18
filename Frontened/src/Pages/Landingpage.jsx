@@ -39,6 +39,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
     orderNotes: ''
   });
   const [lastPaymentMethod, setLastPaymentMethod] = useState('Cash on Delivery');
+  const [lastOrderTotal, setLastOrderTotal] = useState(0);
   const [isProcessingStripe, setIsProcessingStripe] = useState(false);
 
   // Sync logged in user details if available
@@ -252,6 +253,10 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
       return;
     }
 
+    // Snapshot current total before clearing cart
+    const finalAmount = totalPrice;
+    setLastOrderTotal(finalAmount);
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/orders/checkout`, {
         method: 'POST',
@@ -264,10 +269,22 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
           city: formData.city.trim(),
           postalCode: formData.postalCode.trim(),
           orderNotes: formData.orderNotes.trim(),
-          cartItems: cart.map(item => ({ productId: item._id, quantity: item.quantity })),
+          cartItems: cart.map(item => ({ 
+            productId: item._id, 
+            name: item.name, 
+            price: item.price, 
+            quantity: item.quantity 
+          })),
           paymentMethod: 'Cash on Delivery'
         }),
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.order?.total) {
+          setLastOrderTotal(data.order.total);
+        }
+      }
 
       setLastPaymentMethod('Cash on Delivery');
       setCheckoutStep("success");
@@ -759,8 +776,8 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                   </h3>
                   <p>
                     {lastPaymentMethod === 'Cash on Delivery'
-                      ? `Thank you, ${formData.name || 'valued customer'}! Your Cash on Delivery order has been saved in our system. Our delivery courier will bring your parcel to ${formData.shippingAddress ? `${formData.shippingAddress}, ${formData.city}` : 'your address'} and collect $${totalPrice.toFixed(2)} cash at your doorstep.`
-                      : 'Thank you for shopping with Doorstep! Your order has been placed and payment confirmed. A receipt has been sent to your email.'}
+                      ? `Thank you, ${formData.name || 'valued customer'}! Your Cash on Delivery order has been saved in our system. Our delivery courier will bring your parcel to ${formData.shippingAddress ? `${formData.shippingAddress}, ${formData.city}` : 'your address'} and collect $${(lastOrderTotal > 0 ? lastOrderTotal : totalPrice).toFixed(2)} cash at your doorstep.`
+                      : `Thank you for shopping with Doorstep! Your order of $${(lastOrderTotal > 0 ? lastOrderTotal : totalPrice).toFixed(2)} has been placed and payment confirmed. A receipt has been sent to your email.`}
                   </p>
                 </div>
               )}

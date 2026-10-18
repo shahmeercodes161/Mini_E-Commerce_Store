@@ -2,9 +2,12 @@ import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema({
   product: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
+    type: mongoose.Schema.Types.Mixed,
+    ref: 'Product'
+  },
+  name: {
+    type: String,
+    default: ''
   },
   quantity: {
     type: Number,

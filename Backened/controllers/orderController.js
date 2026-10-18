@@ -40,31 +40,35 @@ export const checkout = async (req, res) => {
 
     // Loop through each item in the cart to check inventory
     for (const item of cartItems) {
-      const dbProduct = await Product.findById(item.productId);
-      
-      if (!dbProduct) {
-        return res.status(404).json({ message: `Product not found` });
+      let dbProduct = null;
+      if (item.productId && mongoose.Types.ObjectId.isValid(item.productId)) {
+        dbProduct = await Product.findById(item.productId);
+      }
+      if (!dbProduct && item.name) {
+        dbProduct = await Product.findOne({ name: item.name });
       }
 
-      // Requirement: Prevent cart quantity from exceeding available inventory
-      if (dbProduct.stockQuantity < item.quantity) {
-        return res.status(400).json({ 
-          message: `Insufficient stock for ${dbProduct.name}. Only ${dbProduct.stockQuantity} left.` 
-        });
+      const itemPrice = dbProduct ? dbProduct.price : Number(item.price || 0);
+      const itemName = dbProduct ? dbProduct.name : (item.name || 'Store Product');
+
+      if (dbProduct) {
+        if (dbProduct.stockQuantity < item.quantity) {
+          return res.status(400).json({ 
+            message: `Insufficient stock for ${dbProduct.name}. Only ${dbProduct.stockQuantity} left.` 
+          });
+        }
+        dbProduct.stockQuantity -= item.quantity;
+        await dbProduct.save();
       }
 
-      // Accumulate backend calculations safely (never trust prices from frontend)
-      subtotal += dbProduct.price * item.quantity;
+      subtotal += itemPrice * item.quantity;
 
       finalOrderItems.push({
-        product: dbProduct._id,
+        product: dbProduct ? dbProduct._id : item.productId,
+        name: itemName,
         quantity: item.quantity,
-        priceAtPurchase: dbProduct.price
+        priceAtPurchase: itemPrice
       });
-
-      // Requirement: Reduce inventory stock levels
-      dbProduct.stockQuantity -= item.quantity;
-      await dbProduct.save();
     }
 
     // Calculate totals (8% tax rate to match the frontend calculation)
