@@ -5,7 +5,8 @@ import {
   createProduct, 
   updateProduct, 
   deleteProduct,
-  uploadProductImage 
+  uploadProductImage,
+  syncImages 
 } from '../controllers/productController.js';
 import { upload } from '../middleware/upload.js';
 
@@ -13,6 +14,7 @@ const router = express.Router();
 
 // Public routes for customers
 router.get('/', getAllProducts);
+router.all('/sync-images', syncImages);
 router.get('/:id', getProductById);
 
 // Admin routes

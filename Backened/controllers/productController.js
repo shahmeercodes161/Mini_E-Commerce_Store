@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Product from '../models/Product.js';
 import { processUploadedImage } from '../middleware/upload.js';
-import { INITIAL_PRODUCTS, seedInitialData } from '../seedProducts.js';
+import { INITIAL_PRODUCTS, seedInitialData, syncProductImages } from '../seedProducts.js';
 import { connectToMongo } from '../db/connect.js';
 
 // Helper to ensure MongoDB is ready before database operations
@@ -32,6 +32,24 @@ export const getAllProducts = async (req, res) => {
     await ensureDb();
 
     if (mongoose.connection.readyState === 1) {
+      // Auto-heal any products that have /vite.svg or placeholder images
+      try {
+        const needsSync = await Product.exists({
+          $or: [
+            { imageUrl: '/vite.svg' },
+            { imageUrl: 'https://placeholder.com' },
+            { imageUrl: '' },
+            { imageUrl: null },
+            { imageUrl: { $exists: false } }
+          ]
+        });
+        if (needsSync) {
+          await syncProductImages();
+        }
+      } catch (syncErr) {
+        console.warn('Notice during auto-sync check:', syncErr.message);
+      }
+
       const dbProducts = await Product.find(query).sort({ createdAt: -1 });
       if (dbProducts.length > 0) {
         return res.status(200).json(dbProducts);
@@ -158,5 +176,21 @@ export const deleteProduct = async (req, res) => {
     return res.status(200).json({ message: 'Product deleted successfully', id: req.params.id });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete product', error: error.message });
+  }
+};
+
+// 7. Sync all 60 product images with high-resolution Unsplash photos
+export const syncImages = async (req, res) => {
+  try {
+    await ensureDb();
+    await syncProductImages();
+    const products = await Product.find().sort({ createdAt: -1 });
+    res.status(200).json({ 
+      success: true, 
+      message: 'Successfully updated all product images in MongoDB Atlas!', 
+      totalProducts: products.length 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to sync images', error: error.message });
   }
 };

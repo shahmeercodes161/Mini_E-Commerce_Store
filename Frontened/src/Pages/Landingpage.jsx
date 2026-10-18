@@ -8,31 +8,12 @@ import About from './About';
 import Contact from './Contact';
 import Admin from './Admin';
 import { API_BASE_URL } from '../config/api';
-
-// =========================================================================
-// 1. DEFAULT PRODUCT CATALOG (High-Resolution Real Product Photography)
-// =========================================================================
-const DEFAULT_CATALOG = [
-  { _id: 'seed-1', name: 'Wireless Headphones', category: 'Electronics', price: 79.99, stockQuantity: 25, imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-2', name: 'Mechanical Keyboard', category: 'Electronics', price: 99.99, stockQuantity: 18, imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-3', name: 'Gaming Mouse', category: 'Electronics', price: 49.99, stockQuantity: 30, imageUrl: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-4', name: 'Bluetooth Speaker', category: 'Electronics', price: 59.99, stockQuantity: 14, imageUrl: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-5', name: 'Leather Wallet', category: 'Accessories', price: 34.99, stockQuantity: 22, imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-6', name: 'Modern Analog Watch', category: 'Accessories', price: 129.99, stockQuantity: 10, imageUrl: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-7', name: 'Geometric Backpack', category: 'Accessories', price: 65.00, stockQuantity: 15, imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-8', name: 'Classic Denim Shirt', category: 'Men', price: 45.00, stockQuantity: 20, imageUrl: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-9', name: 'React Bomber Jacket', category: 'Men', price: 89.99, stockQuantity: 8, imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-10', name: 'Casual Suede Loafers', category: 'Men', price: 75.00, stockQuantity: 12, imageUrl: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-11', name: 'Running Shoes', category: 'Apparel', price: 85.00, stockQuantity: 16, imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-12', name: 'Fleece Active Jacket', category: 'Apparel', price: 69.50, stockQuantity: 10, imageUrl: 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-13', name: 'Stainless Water Bottle', category: 'Home & Kitchen', price: 24.99, stockQuantity: 35, imageUrl: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-14', name: 'LED Desk Lamp', category: 'Home & Kitchen', price: 39.99, stockQuantity: 20, imageUrl: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=600&auto=format&fit=crop&q=80' },
-  { _id: 'seed-15', name: 'Ceramic Coffee Mug', category: 'Home & Kitchen', price: 15.00, stockQuantity: 40, imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80' }
-];
+import { resolveProductImage } from '../config/productImages';
 
 export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
-  // Store Catalog state
-  const [products, setProducts] = useState(DEFAULT_CATALOG);
+  // Store Catalog state - initialized empty so no mock products flash
+  const [products, setProducts] = useState([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   // Cart & Drawer state
   const [cart, setCart] = useState([]);
@@ -62,15 +43,21 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
 
   // 1. Fetch catalog directly from Express API
   const loadCatalog = useCallback(async () => {
-    if (!API_BASE_URL) return;
+    if (!API_BASE_URL) {
+      setIsLoadingProducts(false);
+      return;
+    }
     try {
+      setIsLoadingProducts(true);
       const res = await fetch(`${API_BASE_URL}/api/products`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) setProducts(data);
+        if (Array.isArray(data)) setProducts(data);
       }
     } catch (err) {
-      console.warn("Backend catalog fetch notice, using default catalog:", err);
+      console.warn("Backend catalog fetch error:", err);
+    } finally {
+      setIsLoadingProducts(false);
     }
   }, []);
 
@@ -325,7 +312,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                         >
                           <span>{cat}</span>
                           <span style={{ fontSize: '11px', background: selectedCategory === cat ? '#2563eb' : '#f1f5f9', color: selectedCategory === cat ? '#fff' : '#64748b', padding: '2px 7px', borderRadius: '10px' }}>
-                            {count}
+                            {isLoadingProducts ? '...' : count}
                           </span>
                         </li>
                       );
@@ -356,7 +343,9 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                   {/* CATALOG CONTROLS */}
                   <div className="catalog-controls">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: '600', color: '#0f172a' }}>Showing {filteredProducts.length} items</span>
+                      <span style={{ fontWeight: '600', color: '#0f172a' }}>
+                        {isLoadingProducts ? 'Loading catalog from database...' : `Showing ${filteredProducts.length} items`}
+                      </span>
                       {searchQuery && (
                         <button
                           onClick={() => setSearchQuery("")}
@@ -380,62 +369,85 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
 
                   {/* PRODUCT GRID */}
                   <div className="product-grid">
-                    {filteredProducts.length > 0 ? (
-                      filteredProducts.map((product) => (
-                        <div key={product._id} className="product-card">
-                          <span className="card-top-tag">{product.category}</span>
-
-                          <div
-                            className="product-image"
-                            onClick={() => setSelectedProduct(product)}
-                            title="Click to view details"
-                          >
-                            {product.imageUrl ? (
-                              <img
-                                src={product.imageUrl}
-                                alt={product.name}
-                                className="product-card-img"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <div style={{ display: product.imageUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                              <Package size={36} color="#94a3b8" />
-                            </div>
+                    {isLoadingProducts ? (
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="product-card" style={{ opacity: 0.7, pointerEvents: 'none' }}>
+                          <div style={{ 
+                            width: '100%', 
+                            height: '180px', 
+                            background: '#f1f5f9', 
+                            borderRadius: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center' 
+                          }}>
+                            <Package size={32} color="#cbd5e1" />
                           </div>
-
-                          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                            <h4
-                              className="product-title"
-                              onClick={() => setSelectedProduct(product)}
-                            >
-                              {product.name}
-                            </h4>
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 'auto', paddingTop: '6px' }}>
-                              <p className="price">${product.price ? product.price.toFixed(2) : '0.00'}</p>
-
-                              <span className={`stock-tag ${product.stockQuantity === 0 ? 'stock-out' : product.stockQuantity < 10 ? 'stock-low' : 'stock-in'}`}>
-                                {product.stockQuantity === 0 ? 'Sold Out' : product.stockQuantity < 10 ? `Low: ${product.stockQuantity}` : `In Stock: ${product.stockQuantity}`}
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => addToCart(product)}
-                            disabled={product.stockQuantity === 0}
-                            className={`add-cart-btn ${product.stockQuantity === 0 ? 'btn-disabled' : 'btn-active'}`}
-                          >
-                            {product.stockQuantity === 0 ? 'Sold Out' : (
-                              <>
-                                <ShoppingBag size={16} /> Add to Cart
-                              </>
-                            )}
-                          </button>
+                          <div style={{ height: '16px', width: '75%', background: '#e2e8f0', borderRadius: '4px', margin: '14px 0 8px 0' }} />
+                          <div style={{ height: '14px', width: '35%', background: '#f1f5f9', borderRadius: '4px', marginBottom: '16px' }} />
+                          <div style={{ height: '36px', width: '100%', background: '#e2e8f0', borderRadius: '8px', marginTop: 'auto' }} />
                         </div>
                       ))
+                    ) : filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => {
+                        const imgUrl = resolveProductImage(product);
+                        return (
+                          <div key={product._id} className="product-card">
+                            <span className="card-top-tag">{product.category}</span>
+
+                            <div
+                              className="product-image"
+                              onClick={() => setSelectedProduct(product)}
+                              title="Click to view details"
+                            >
+                              {imgUrl ? (
+                                <img
+                                  src={imgUrl}
+                                  alt={product.name}
+                                  className="product-card-img"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div style={{ display: imgUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                <Package size={36} color="#94a3b8" />
+                              </div>
+                            </div>
+
+                            <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                              <h4
+                                className="product-title"
+                                onClick={() => setSelectedProduct(product)}
+                              >
+                                {product.name}
+                              </h4>
+
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 'auto', paddingTop: '6px' }}>
+                                <p className="price">${product.price ? product.price.toFixed(2) : '0.00'}</p>
+
+                                <span className={`stock-tag ${product.stockQuantity === 0 ? 'stock-out' : product.stockQuantity < 10 ? 'stock-low' : 'stock-in'}`}>
+                                  {product.stockQuantity === 0 ? 'Sold Out' : product.stockQuantity < 10 ? `Low: ${product.stockQuantity}` : `In Stock: ${product.stockQuantity}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => addToCart(product)}
+                              disabled={product.stockQuantity === 0}
+                              className={`add-cart-btn ${product.stockQuantity === 0 ? 'btn-disabled' : 'btn-active'}`}
+                            >
+                              {product.stockQuantity === 0 ? 'Sold Out' : (
+                                <>
+                                  <ShoppingBag size={16} /> Add to Cart
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })
                     ) : (
                       <div style={{ gridColumn: '1 / -1', padding: '48px 20px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                         <Search size={36} color="#94a3b8" style={{ marginBottom: '12px' }} />
@@ -454,9 +466,9 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                 </button>
                 <div className="product-detail-container">
                   <div className="detail-image-box">
-                    {selectedProduct.imageUrl ? (
+                    {resolveProductImage(selectedProduct) ? (
                       <img
-                        src={selectedProduct.imageUrl}
+                        src={resolveProductImage(selectedProduct)}
                         alt={selectedProduct.name}
                         className="detail-product-img"
                         onError={(e) => {
@@ -466,7 +478,7 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                         }}
                       />
                     ) : null}
-                    <div style={{ display: selectedProduct.imageUrl ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: resolveProductImage(selectedProduct) ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                       <Package size={64} color="#94a3b8" />
                     </div>
                   </div>
@@ -560,8 +572,15 @@ export default function Shop({ currentUser, onLogout, initialPage = "shop" }) {
                     {cart.map((item) => (
                       <div key={item._id} className="cart-item-row">
                         <div className="cart-item-thumb">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} />
+                          {resolveProductImage(item) ? (
+                            <img 
+                              src={resolveProductImage(item)} 
+                              alt={item.name} 
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
                           ) : (
                             <Package size={20} color="#94a3b8" />
                           )}

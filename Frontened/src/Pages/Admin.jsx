@@ -5,6 +5,7 @@ import {
   X, AlertCircle 
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
+import { resolveProductImage } from '../config/productImages';
 
 export default function Admin({ products = [], setProducts, onSwitchToShop }) {
   const [orders, setOrders] = useState([]);
@@ -648,15 +649,15 @@ export default function Admin({ products = [], setProducts, onSwitchToShop }) {
                         fontSize: '20px',
                         border: '1px solid #e2e8f0'
                       }}>
-                        {product.imageUrl ? (
+                        {resolveProductImage(product) ? (
                           <img 
-                            src={product.imageUrl} 
+                            src={resolveProductImage(product)} 
                             alt={product.name} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
                           />
                         ) : null}
-                        <span style={{ display: product.imageUrl ? 'none' : 'block' }}>
+                        <span style={{ display: resolveProductImage(product) ? 'none' : 'block' }}>
                           {product.category === 'Electronics' ? '🎧' : product.category === 'Accessories' ? '💼' : product.category === 'Men' ? '👔' : product.category === 'Apparel' ? '👟' : '📦'}
                         </span>
                       </div>
