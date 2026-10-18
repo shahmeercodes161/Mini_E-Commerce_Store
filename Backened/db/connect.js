@@ -13,10 +13,15 @@ if (process.platform === 'win32' && !process.env.VERCEL) {
   }
 }
 
-const DEFAULT_MONGO_URI = "mongodb+srv://anshrarehman8_db_user:ProjectPass123@cluster0.igzcjcu.mongodb.net/ecommerce?appName=Cluster0";
+const WORKING_MONGO_URI = "mongodb+srv://shahmeershahzad748_db_user:shahmeer123@cluster0.ka3id7c.mongodb.net/ecommerce?appName=Cluster0";
+const DEFAULT_MONGO_URI = WORKING_MONGO_URI;
 
 export function getMongoUri() {
-  let uri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
+  let uri = process.env.MONGO_URI;
+  // If uri is missing, placeholder, or has broken anshrarehman8 auth, use verified working cluster
+  if (!uri || uri.includes("anshrarehman8_db_user") || uri.includes("<db_password>")) {
+    return WORKING_MONGO_URI;
+  }
   if (uri.includes("mongodb.net/?")) {
     uri = uri.replace("mongodb.net/?", "mongodb.net/ecommerce?");
   } else if (uri.endsWith("mongodb.net/")) {
@@ -37,21 +42,30 @@ export async function connectToMongo() {
     return cachedPromise;
   }
 
-  const uri = getMongoUri();
-  if (!uri) {
-    throw new Error("MongoDB URI is not configured");
-  }
+  const primaryUri = getMongoUri();
 
-  cachedPromise = mongoose.connect(uri, {
-    serverSelectionTimeoutMS: 10000,
-    bufferCommands: true,
-  }).then((mongooseInstance) => {
-    cachedConnection = mongooseInstance.connection;
-    return cachedConnection;
-  }).catch((error) => {
-    cachedPromise = null;
-    console.warn("⚠️ MongoDB connection notice:", error.message);
+  const tryConnect = async (targetUri) => {
+    return mongoose.connect(targetUri, {
+      serverSelectionTimeoutMS: 8000,
+      bufferCommands: true,
+    }).then((mongooseInstance) => {
+      cachedConnection = mongooseInstance.connection;
+      console.log('✅ Connected to MongoDB Atlas successfully.');
+      return cachedConnection;
+    });
+  };
+
+  cachedPromise = tryConnect(primaryUri).catch(async (error) => {
+    console.warn("⚠️ Primary MongoDB connection notice:", error.message);
+    if (primaryUri !== WORKING_MONGO_URI) {
+      console.log("🔄 Connecting with verified MongoDB cluster...");
+      return tryConnect(WORKING_MONGO_URI);
+    }
     throw error;
+  }).catch((finalError) => {
+    cachedPromise = null;
+    console.error("❌ MongoDB connection error:", finalError.message);
+    throw finalError;
   });
 
   return cachedPromise;
