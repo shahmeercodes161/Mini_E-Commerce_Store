@@ -16,6 +16,8 @@ A full-stack e-commerce web application built using the MERN ecosystem (**React,
 * **GitHub Repository:** https://github.com
 * **Admin Dashboard Username / Email:** admin@doorstep.com
 * **Admin Dashboard Password:** admin123
+* **Customer Account:user12@gmail.com
+* **Customer Account Password : 23456
 
 ## Online Database & Data Files
 * **Online Database:** This project uses an online cloud database hosted on **MongoDB Atlas (MongoDB Cloud)** containing **57 products** across 5 categories (Accessories, Electronics, Men, Apparel, Home & Kitchen), along with customer order records.
