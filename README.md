@@ -18,7 +18,7 @@ A full-stack e-commerce web application built using the MERN ecosystem (**React,
 * **Admin Dashboard Password:** admin123
 
 ## Online Database & Data Files
-* **Online Database:** This project uses an online cloud database hosted on **MongoDB Atlas (MongoDB Cloud)** containing **60 products** across 5 categories (Accessories, Electronics, Men, Apparel, Home & Kitchen), along with customer order records.
+* **Online Database:** This project uses an online cloud database hosted on **MongoDB Atlas (MongoDB Cloud)** containing **57 products** across 5 categories (Accessories, Electronics, Men, Apparel, Home & Kitchen), along with customer order records.
 * **Configuration Template:** `.env.example` (lists required environment variables: `MONGO_URI`, `STRIPE_SECRET_KEY`, `PORT`).
 * **Sample Dataset:** `products_seed.json` (exported JSON dataset of the store catalog).
 
